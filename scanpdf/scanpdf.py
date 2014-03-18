@@ -58,6 +58,20 @@ class ScanPdf(object):
         return out
 
 
+    def run_scan(self):
+        device = os.environ['SCANBD_DEVICE']
+        self.cmd('logger -t "scanbd: " "Begin of scan "')
+        c = ['scanadf',
+                '-d %s' % device,
+                '--source "ADF Duplex"',
+                '--mode Lineart',
+                '--resolution %sdpi' % self.dpi,
+                '--y-resolution %sdpi' % self.dpi,
+                '-o %s/page_%%04d' % self.tmp_dir,
+                ]
+        self.cmd(c)
+        self.cmd('logger -t "scanbd: " "End of scan "')
+
     def get_options(self, argv):
         """
             Parse the command-line options and set the following object properties:
@@ -93,8 +107,9 @@ class ScanPdf(object):
         """ 
             The main entry point into ScanPdf
 
-            #. Do something
-            #. Do something else
+            #. Get the options
+            #. Create the temp dir
+            #. Run scanadf
         """
         # Read the command line options
         self.get_options(argv)
