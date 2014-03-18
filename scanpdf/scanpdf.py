@@ -114,7 +114,7 @@ class ScanPdf(object):
         # Read the command line options
         self.get_options(argv)
         logging.info("Temp dir: %s" % self.tmp_dir)
-        self.cmd(['ls', '-h', '-l'])
+        self.run_scan()
 
 
 
