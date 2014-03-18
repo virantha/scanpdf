@@ -63,7 +63,7 @@ class ScanPdf(object):
         device = os.environ['SCANBD_DEVICE']
         self.cmd('logger -t "scanbd: " "Begin of scan "')
         c = ['scanadf',
-                '-d %s' % device,
+                '-d "%s"' % device,
                 '--source "ADF Duplex"',
                 '--mode Lineart',
                 '--resolution %sdpi' % self.dpi,
