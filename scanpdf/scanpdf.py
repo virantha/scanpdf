@@ -54,6 +54,7 @@ class ScanPdf(object):
     def cmd(self, cmd_list):
         if isinstance(cmd_list, list):
             cmd_list = ' '.join(cmd_list)
+        logging.debug("Running cmd: %s" % cmd_list)
         out = subprocess.check_output(cmd_list, stderr=subprocess.STDOUT, shell=True)
         return out
 
