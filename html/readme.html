@@ -95,23 +95,28 @@
 <a class="reference external image-reference" href="https://coveralls.io/r/virantha/scanpdf"><img alt="https://coveralls.io/repos/virantha/scanpdf/badge.png?branch=develop" src="https://coveralls.io/repos/virantha/scanpdf/badge.png?branch=develop" /></a>
 <ul class="simple">
 <li>Free and open-source software: ASL2 license</li>
-<li>Blog: <a class="reference external" href="http://virantha.com/category/projects/scanpdf">http://virantha.com/category/projects/scanpdf</a></li>
 <li>Documentation: <a class="reference external" href="http://virantha.github.io/scanpdf/html">http://virantha.github.io/scanpdf/html</a></li>
 <li>Source: <a class="reference external" href="https://github.com/virantha/scanpdf">https://github.com/virantha/scanpdf</a></li>
 </ul>
 <div class="section" id="features">
 <h2>Features<a class="headerlink" href="#features" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li>Kitchen</li>
-<li>Sink</li>
+<li>Uses SANE/scanadf to automatically scan to multi-page compressed PDFs</li>
+<li><cite>Integrates with ScanBd</cite> to respond to hardware button presses</li>
+<li>Automatically removes blank pages.</li>
 </ul>
 </div>
 <div class="section" id="usage">
 <h2>Usage:<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>See docs</p>
+<p>The simplest usage is:</p>
+<p>Some of the options supported:</p>
+<p>Right now, I&#8217;m assuming this is getting called via ScanBD, so I don&#8217;t have the option to manually specify the
+scanner.  If you really want to use this standalone, for now, please just set the <tt class="docutils literal"><span class="pre">SCANBD_DEVICE</span></tt> environment
+variable to your scanner device name before running this script</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>Requires ImageMagick and SANE to be installed.</p>
 </div>
 <div class="section" id="disclaimer">
 <h2>Disclaimer<a class="headerlink" href="#disclaimer" title="Permalink to this headline">¶</a></h2>
