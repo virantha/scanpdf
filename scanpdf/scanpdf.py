@@ -27,6 +27,8 @@ Options:
     --face-up=<true/false>       Face-up scanning [default: True]
     --keep-blanks   Don't check for and remove blank pages
     --blank-threshold=<ths>  Percentage of white to be marked as blank [default: 0.97] 
+    --post-process  Run unpaper to deskew/clean up
+    
 
 """
 
@@ -107,8 +109,9 @@ class ScanPdf(object):
         reorder = []
         assert len(pages) % 2 == 0, "Why is page count not even for duplexing??"
         logging.info("Reordering pages")
-        for i in range(len(pages)-1):
-            pages[i], pages[i+1] = pages[i+1], pages[i]
+        #for i in range(0,len(pages),2):
+            #pages[i], pages[i+1] = pages[i+1], pages[i]
+        pages.reverse()
         return pages
             
     def is_blank(self, filename):
@@ -124,8 +127,20 @@ class ScanPdf(object):
         else:
             return False
 
+    def run_postprocess(self, page_files):
+        cwd = os.getcwd()
+        os.chdir(self.tmp_dir)
         
-        
+        processed_pages = []
+        for page in page_files:
+            processed_page = '%s_unpaper' % page
+            c = ['unpaper', page, processed_page]
+            self.cmd(c) 
+            os.remove(page)
+            processed_pages.append(processed_page)
+        os.chdir(cwd)
+        return processed_pages
+
     def run_convert(self, page_files):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
@@ -149,6 +164,10 @@ class ScanPdf(object):
         shutil.move(pdf_basename, self.pdf_filename)
         for filename in page_files+[ps_filename]:
             os.remove(filename)
+           
+        # IF we did the scan, then remove the tmp dir too
+        if self.args['scan']:
+            os.rmdir(self.tmp_dir)
         os.chdir(cwd)
         
 
@@ -193,6 +212,7 @@ class ScanPdf(object):
         self.keep_blanks =  argv['--keep-blanks']
         self.blank_threshold = float(argv['--blank-threshold'])
         assert(self.blank_threshold >= 0 and self.blank_threshold <= 1.0)
+        self.post_process = argv['--post-process']
 
 
 
@@ -212,9 +232,11 @@ class ScanPdf(object):
         
         # Now, convert the files to ps
         pages = self.get_pages()
+        print pages
         if self.args['--face-up']:
             pages = self.reorder_face_up(pages)
         
+        print pages
         # Run blanks
         if not self.keep_blanks:
             no_blank_pages = []
@@ -229,6 +251,9 @@ class ScanPdf(object):
             pages = no_blank_pages
                 
         print pages
+        if self.post_process:
+            pages = self.run_postprocess(pages)
+            
         self.run_convert(pages)
         
 
