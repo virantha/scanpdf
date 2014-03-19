@@ -17,22 +17,20 @@ Scan PDF -
 Features
 --------
 * Uses SANE/scanadf to automatically scan to multi-page compressed PDFs
-* `Integrates with ScanBd` to respond to hardware button presses
+* `Integrates with ScanBd <http://virantha.github.io/scanpdf/html>`_ to respond to hardware button presses
 * Automatically removes blank pages.
-
-.. _`Integrates with ScanBd: http://virantha.com/2014/03/17/one-touch-scanning-with-fujitsu-scansnap-in-linux/`
 
 Usage:
 ------
 The simplest usage is:
 
-.. code-block: bash
+::
 
     scanpdf scan <pdffile>
 
 Some of the options supported:
 
-.. code-block: bash
+::
     
     --dpi=<dpi>     DPI to scan in [default: 300]
     --tmpdir=<dir>  Temporary directory [default: /tmp]
@@ -48,7 +46,7 @@ variable to your scanner device name before running this script
 
 Installation
 ------------
-.. code-block: bash
+::
 
     $ pip install scanpdf
 
