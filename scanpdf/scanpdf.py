@@ -29,23 +29,19 @@ Options:
     --blank-threshold=<ths>  Percentage of white to be marked as blank [default: 0.97] 
     --post-process  Run unpaper to deskew/clean up
     
-
 """
 
-import argparse
 import sys, os
 import logging
 import shutil
 import re
 
 from version import __version__
-import yaml
 import docopt
 
 import subprocess
 import time
 import glob
-
 
 
 class ScanPdf(object):
@@ -232,11 +228,11 @@ class ScanPdf(object):
         
         # Now, convert the files to ps
         pages = self.get_pages()
-        print pages
+        logging.debug( pages )
         if self.args['--face-up']:
             pages = self.reorder_face_up(pages)
         
-        print pages
+        logging.debug( pages )
         # Run blanks
         if not self.keep_blanks:
             no_blank_pages = []
@@ -250,16 +246,13 @@ class ScanPdf(object):
                     os.remove(filename)
             pages = no_blank_pages
                 
-        print pages
+        logging.debug( pages )
+
         if self.post_process:
             pages = self.run_postprocess(pages)
             
         self.run_convert(pages)
         
-
-
-
-
 def main():
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__ )
     script = ScanPdf()
