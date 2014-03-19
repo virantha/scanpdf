@@ -109,13 +109,27 @@
 <div class="section" id="usage">
 <h2>Usage:<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
 <p>The simplest usage is:</p>
+<div class="highlight-python"><div class="highlight"><pre>scanpdf scan &lt;pdffile&gt;
+</pre></div>
+</div>
 <p>Some of the options supported:</p>
+<div class="highlight-python"><div class="highlight"><pre>--dpi=&lt;dpi&gt;     DPI to scan in [default: 300]
+--tmpdir=&lt;dir&gt;  Temporary directory [default: /tmp]
+--face-up=&lt;true/false&gt;       Face-up scanning [default: True]
+--keep-blanks   Don&#39;t check for and remove blank pages
+--blank-threshold=&lt;ths&gt;  Percentage of white to be marked as blank [default: 0.97]
+--post-process  Run unpaper to deskew/clean up
+</pre></div>
+</div>
 <p>Right now, I&#8217;m assuming this is getting called via ScanBD, so I don&#8217;t have the option to manually specify the
 scanner.  If you really want to use this standalone, for now, please just set the <tt class="docutils literal"><span class="pre">SCANBD_DEVICE</span></tt> environment
 variable to your scanner device name before running this script</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-python"><div class="highlight"><pre>$ pip install scanpdf
+</pre></div>
+</div>
 <p>Requires ImageMagick and SANE to be installed.</p>
 </div>
 <div class="section" id="disclaimer">
