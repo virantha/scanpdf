@@ -17,6 +17,7 @@
 Usage:
     scanpdf [options] scan <pdffile>
     scanpdf [options] skipscan <scanfilesdir> <pdffile>
+    scanpdf [options] justscan 
 
 
 Options:
@@ -162,7 +163,7 @@ class ScanPdf(object):
             os.remove(filename)
            
         # IF we did the scan, then remove the tmp dir too
-        if self.args['scan']:
+        if self.args['scan'] and not self.args['--keep-tmpdir']:
             os.rmdir(self.tmp_dir)
         os.chdir(cwd)
         
@@ -186,11 +187,12 @@ class ScanPdf(object):
             logging.basicConfig(level=logging.INFO, format='%(message)s')
         if argv['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')                
-        self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+	if not self.args['justscan']:
+	    self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
         self.dpi = self.args['--dpi']
 
-        if argv['scan']:
-            output_dir = time.strftime('%Y-%m-%d_%H%M.%S', time.localtime())
+        if argv['scan'] or argv['justscan']:
+            output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
             self.tmp_dir = os.path.join(self.args['--tmpdir'], output_dir)
             self.tmp_dir = os.path.abspath(self.tmp_dir)
             if os.path.exists(self.tmp_dir):
@@ -223,9 +225,11 @@ class ScanPdf(object):
         # Read the command line options
         self.get_options(argv)
         logging.info("Temp dir: %s" % self.tmp_dir)
-        if self.args['scan']:
+        if self.args['scan'] or self.args['justscan']:
             self.run_scan()
         
+	if self.args['justscan']:
+            return
         # Now, convert the files to ps
         pages = self.get_pages()
         logging.debug( pages )
