@@ -1,6 +1,6 @@
 Todo list
 =========
 
-- Add support to auto-detect color/greyscale images
+- Make it more generic in terms of stand-alone usage
 - Add docstrings
 

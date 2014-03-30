@@ -15,21 +15,20 @@
 """Scan to PDF.
 
 Usage:
-    scanpdf [options] scan <pdffile>
-    scanpdf [options] skipscan <scanfilesdir> <pdffile>
-    scanpdf [options] justscan 
+    scanpdf [options] scan 
+    scanpdf [options] pdf <pdffile> 
+    scanpdf [options] scan pdf <pdfile> 
 
 
 Options:
-    -v --verbose    Verbose logging
-    -d --debug      Debug logging
-    --dpi=<dpi>     DPI to scan in [default: 300]
-    --tmpdir=<dir>  Temporary directory [default: /tmp]
-    --face-up=<true/false>       Face-up scanning [default: True]
-    --keep-blanks   Don't check for and remove blank pages
-    --blank-threshold=<ths>  Percentage of white to be marked as blank [default: 0.97] 
-    --post-process  Run unpaper to deskew/clean up
-    --output-dir=<dir>    Output directory (appended to tmpdir)
+    -v --verbose                Verbose logging
+    -d --debug                  Debug logging
+    --dpi=<dpi>                 DPI to scan in [default: 300]
+    --tmpdir=<dir>              Temporary directory 
+    --face-up=<true/false>      Face-up scanning [default: True]
+    --keep-blanks               Don't check for and remove blank pages
+    --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
+    --post-process              Run unpaper to deskew/clean up
     
 """
 
@@ -289,36 +288,33 @@ class ScanPdf(object):
             logging.basicConfig(level=logging.INFO, format='%(message)s')
         if argv['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')                
-        if not self.args['justscan']:
-	    self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+        if self.args['pdf']:
+            self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+
         self.dpi = self.args['--dpi']
 
-        if argv['--output-dir']:
-            output_dir = argv['--output-dir']
+        output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+        if argv['--tmpdir']:
+            self.tmp_dir = argv['--tmpdir']
         else:
-            output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+            self.tmp_dir = os.path.join('/tmp', output_dir)
+        self.tmp_dir = os.path.abspath(self.tmp_dir)
 
-
-        if argv['scan'] or argv['justscan']:
-            self.tmp_dir = os.path.join(self.args['--tmpdir'], output_dir)
-            self.tmp_dir = os.path.abspath(self.tmp_dir)
+        # Make the tmp dir only if we're scanning, o/w throw an error
+        if argv['scan']:
             if os.path.exists(self.tmp_dir):
                 self._error("Temporary output directory %s already exists!" % self.tmp_dir)
             else:
-                    os.makedirs(self.tmp_dir)
-        elif argv['skipscan']:
-            output_dir = argv['<scanfilesdir>']
-            self.tmp_dir = os.path.abspath(output_dir)
+                os.makedirs(self.tmp_dir)
+        else:
             if not os.path.exists(self.tmp_dir):
                 self._error("Scan files directory %s does not exist!" % self.tmp_dir)
-
+            
         # Blank checks
         self.keep_blanks =  argv['--keep-blanks']
         self.blank_threshold = float(argv['--blank-threshold'])
         assert(self.blank_threshold >= 0 and self.blank_threshold <= 1.0)
         self.post_process = argv['--post-process']
-
-
 
     def go(self, argv):
         """ 
@@ -331,43 +327,41 @@ class ScanPdf(object):
         # Read the command line options
         self.get_options(argv)
         logging.info("Temp dir: %s" % self.tmp_dir)
-        if self.args['scan'] or self.args['justscan']:
+        if self.args['scan']:
             self.run_scan()
         
-	if self.args['justscan']:
-            return
-
-        # Now, convert the files to ps
-        pages = self.get_pages()
-        logging.debug( pages )
-        if self.args['--face-up']:
-            pages = self.reorder_face_up(pages)
-        
-        logging.debug( pages )
-
-        # Now, check if color or bw
-        pages = self.convert_to_bw(pages)
-        logging.debug(pages)
-
-        # Run blanks
-        if not self.keep_blanks:
-            no_blank_pages = []
-            for i,page in enumerate(pages):
-                filename = os.path.join(self.tmp_dir, page)
-                logging.info("Checking if %s is blank..." % filename)
-                if not self.is_blank(filename):
-                    no_blank_pages.append(page)
-                else:
-                    logging.info("  page %s is blank, removing..." % i)
-                    os.remove(filename)
-            pages = no_blank_pages
-                
-        logging.debug( pages )
-
-        if self.post_process:
-            pages = self.run_postprocess(pages)
+        if self.args['pdf']:
+            # Now, convert the files to ps
+            pages = self.get_pages()
+            logging.debug( pages )
+            if self.args['--face-up']:
+                pages = self.reorder_face_up(pages)
             
-        self.run_convert(pages)
+            logging.debug( pages )
+
+            # Now, check if color or bw
+            pages = self.convert_to_bw(pages)
+            logging.debug(pages)
+
+            # Run blanks
+            if not self.keep_blanks:
+                no_blank_pages = []
+                for i,page in enumerate(pages):
+                    filename = os.path.join(self.tmp_dir, page)
+                    logging.info("Checking if %s is blank..." % filename)
+                    if not self.is_blank(filename):
+                        no_blank_pages.append(page)
+                    else:
+                        logging.info("  page %s is blank, removing..." % i)
+                        os.remove(filename)
+                pages = no_blank_pages
+                    
+            logging.debug( pages )
+
+            if self.post_process:
+                pages = self.run_postprocess(pages)
+                
+            self.run_convert(pages)
         
 def main():
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__ )

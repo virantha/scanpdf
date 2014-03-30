@@ -19,6 +19,7 @@ Features
 * Uses SANE/scanadf to automatically scan to multi-page compressed PDFs
 * `Integrates with ScanBd <http://virantha.github.io/scanpdf/html>`_ to respond to hardware button presses
 * Automatically removes blank pages.
+* Scans in color, and automatically down-converts into 1-bit B/W image for text/greyscale images
 
 Usage:
 ------
