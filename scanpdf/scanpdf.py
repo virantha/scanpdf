@@ -29,6 +29,7 @@ Options:
     --keep-blanks   Don't check for and remove blank pages
     --blank-threshold=<ths>  Percentage of white to be marked as blank [default: 0.97] 
     --post-process  Run unpaper to deskew/clean up
+    --output-dir=<dir>    Output directory (appended to tmpdir)
     
 """
 
@@ -43,6 +44,7 @@ import docopt
 import subprocess
 import time
 import glob
+from itertools import combinations
 
 
 class ScanPdf(object):
@@ -60,9 +62,14 @@ class ScanPdf(object):
         if isinstance(cmd_list, list):
             cmd_list = ' '.join(cmd_list)
         logging.debug("Running cmd: %s" % cmd_list)
-        out = subprocess.check_output(cmd_list, stderr=subprocess.STDOUT, shell=True)
-        logging.debug(out)
-        return out
+        try:
+            out = subprocess.check_output(cmd_list, stderr=subprocess.STDOUT, shell=True)
+            logging.debug(out)
+            return out
+        except subprocess.CalledProcessError as e:
+            print e.output
+            self._error("Could not run command %s" % cmd_list)
+            
 
 
     def run_scan(self):
@@ -168,6 +175,82 @@ class ScanPdf(object):
         os.chdir(cwd)
         
 
+    def convert_to_bw(self, pages):
+        new_pages = []
+        for i, page in enumerate(pages):
+            filename = os.path.join(self.tmp_dir, page)
+            logging.info("Checking if %s is bw..." % filename)
+            if self._is_color(filename):
+                new_pages.append(page)
+            else: # COnvert to BW
+                bw_page = self._page_to_bw(self, filename)
+                new_pages.append(bw_page)
+        return new_pages
+
+            
+    def _page_to_bw(self, page):
+        out_page = "%s_bw" % page
+        cwd = os.getcwd()
+        os.chdir(self.tmpdir)
+
+        cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (page, page)
+        out = self.cmd(cmd)
+        os.chdir(cwd)
+        return out_page
+
+    def _is_color(self, filename):
+        """
+            Run the following command from ImageMagick:
+
+            ::
+                
+                 convert holi.pdf -colors 8 -depth 8 -format %c histogram:info:- 
+
+            This outputs something like the following:
+            ::
+
+                  10831: ( 24, 26, 26,255) #181A1A srgba(24,26,26,1)
+                  4836: ( 55, 87, 79,255) #37574F srgba(55,87,79,1)
+                  6564: ( 77,138,121,255) #4D8A79 srgba(77,138,121,1)
+                  4997: ( 86, 96, 93,255) #56605D srgba(86,96,93,1)
+                  7005: ( 92,153,139,255) #5C998B srgba(92,153,139,1)
+                  2479: (143,118,123,255) #8F767B srgba(143,118,123,1)
+                  8870: (169,176,170,255) #A9B0AA srgba(169,176,170,1)
+                442906: (254,254,254,255) #FEFEFE srgba(254,254,254,1)
+                  1053: (  0,  0,  0,255) #000000 black
+                484081: (255,255,255,255) #FFFFFF white
+ 
+        """
+        cmd = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % filename
+        out = self.cmd(cmd)
+        mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+),.+""")
+        colors = []
+        for line in out.splitlines():
+            matchLine = mLine.search(line)
+            if matchLine:
+                logging.debug("Found RGB value")
+                color = [int(x) for x in (matchLine.group('count'),
+                             matchLine.group('R'),
+                             matchLine.group('G'),
+                             matchLine.group('B'),
+                             )
+                        ]
+                colors.append(color)
+        # sort
+        colors.sort(reverse=True, key = lambda x: x[0])
+        logging.debug(colors)
+        is_color = False
+        for color in colors:
+            diff = float(sum([abs(color[2]-color[1]),
+                         abs(color[3]-color[1]),
+                         abs(color[3]-color[2]),
+                         ]))/3
+            if diff > 20:
+                is_color = True
+                logging.debug("Found color")
+        return is_color
+
+
 
     def get_options(self, argv):
         """
@@ -191,8 +274,13 @@ class ScanPdf(object):
 	    self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
         self.dpi = self.args['--dpi']
 
-        if argv['scan'] or argv['justscan']:
+        if argv['--output-dir']:
+            output_dir = argv['--output-dir']
+        else:
             output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+
+
+        if argv['scan'] or argv['justscan']:
             self.tmp_dir = os.path.join(self.args['--tmpdir'], output_dir)
             self.tmp_dir = os.path.abspath(self.tmp_dir)
             if os.path.exists(self.tmp_dir):
@@ -201,7 +289,6 @@ class ScanPdf(object):
                     os.makedirs(self.tmp_dir)
         elif argv['skipscan']:
             output_dir = argv['<scanfilesdir>']
-            #self.tmp_dir = os.path.join(self.args['--tmpdir'], output_dir)
             self.tmp_dir = os.path.abspath(output_dir)
             if not os.path.exists(self.tmp_dir):
                 self._error("Scan files directory %s does not exist!" % self.tmp_dir)
@@ -230,6 +317,7 @@ class ScanPdf(object):
         
 	if self.args['justscan']:
             return
+
         # Now, convert the files to ps
         pages = self.get_pages()
         logging.debug( pages )
@@ -237,6 +325,11 @@ class ScanPdf(object):
             pages = self.reorder_face_up(pages)
         
         logging.debug( pages )
+
+        # Now, check if color or bw
+        pages = self.convert_to_bw(pages)
+        logging.debug(pages)
+
         # Run blanks
         if not self.keep_blanks:
             no_blank_pages = []
