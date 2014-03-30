@@ -78,7 +78,7 @@ class ScanPdf(object):
         c = ['scanadf',
                 '-d "%s"' % device,
                 '--source "ADF Duplex"',
-                '--mode Lineart',
+                '--mode Color',
                 '--resolution %sdpi' % self.dpi,
                 '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
@@ -183,7 +183,7 @@ class ScanPdf(object):
             if self._is_color(filename):
                 new_pages.append(page)
             else: # COnvert to BW
-                bw_page = self._page_to_bw(self, filename)
+                bw_page = self._page_to_bw(filename)
                 new_pages.append(bw_page)
         return new_pages
 
@@ -191,7 +191,7 @@ class ScanPdf(object):
     def _page_to_bw(self, page):
         out_page = "%s_bw" % page
         cwd = os.getcwd()
-        os.chdir(self.tmpdir)
+        os.chdir(self.tmp_dir)
 
         cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (page, page)
         out = self.cmd(cmd)
