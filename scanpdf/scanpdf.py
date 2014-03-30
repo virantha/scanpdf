@@ -223,12 +223,12 @@ class ScanPdf(object):
         """
         cmd = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % filename
         out = self.cmd(cmd)
-        mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+),.+""")
+        mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+).+""")
         colors = []
         for line in out.splitlines():
             matchLine = mLine.search(line)
             if matchLine:
-                logging.debug("Found RGB value")
+                loggingd.debug("Found RGB values")
                 color = [int(x) for x in (matchLine.group('count'),
                              matchLine.group('R'),
                              matchLine.group('G'),
@@ -240,6 +240,7 @@ class ScanPdf(object):
         colors.sort(reverse=True, key = lambda x: x[0])
         logging.debug(colors)
         is_color = False
+        logging.debug(colors)
         for color in colors:
             diff = float(sum([abs(color[2]-color[1]),
                          abs(color[3]-color[1]),
