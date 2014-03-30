@@ -121,9 +121,25 @@ class ScanPdf(object):
     def is_blank(self, filename):
         """
             Returns true if image in filename is blank
+
+	     standard deviation: 56.9662 (0.223397)
         """
         if not os.path.exists(filename):
             return True
+
+
+        c = 'identify -verbose %s' % filename
+        result = self.cmd(c)
+        mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
+        for line in result.splitlines():
+            match = mStdDev.search(line)
+            if match:
+                stdev = float(match.group('percent'))
+                if stdev > 0.1:
+                    return False
+        return True
+
+        # OLD CODE - doesn't work for color images
         c = 'convert %s -shave 1%%x1%%  -format "%%[fx:mean]" info:' % filename
         result = self.cmd(c)
         if float(result.strip()) > self.blank_threshold:
@@ -242,6 +258,8 @@ class ScanPdf(object):
         is_color = False
         logging.debug(colors)
         for color in colors:
+            # Calculate the mean differences between the RGB components
+            # Shades of grey will be very close to zero in this metric...
             diff = float(sum([abs(color[2]-color[1]),
                          abs(color[3]-color[1]),
                          abs(color[3]-color[2]),
@@ -271,7 +289,7 @@ class ScanPdf(object):
             logging.basicConfig(level=logging.INFO, format='%(message)s')
         if argv['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')                
-	if not self.args['justscan']:
+        if not self.args['justscan']:
 	    self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
         self.dpi = self.args['--dpi']
 
