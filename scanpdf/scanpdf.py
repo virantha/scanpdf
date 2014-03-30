@@ -228,7 +228,7 @@ class ScanPdf(object):
         for line in out.splitlines():
             matchLine = mLine.search(line)
             if matchLine:
-                loggingd.debug("Found RGB values")
+                logging.debug("Found RGB values")
                 color = [int(x) for x in (matchLine.group('count'),
                              matchLine.group('R'),
                              matchLine.group('G'),
