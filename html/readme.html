@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Scan PDF - &mdash; Scan PDF 0.1.0 documentation</title>
+    <title>Scan PDF - Easy scans in Linux with a document scanner like the Fujitsu ScanSnap &mdash; Scan PDF 0.2.0 documentation</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -14,7 +14,7 @@
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
         URL_ROOT:    './',
-        VERSION:     '0.1.0',
+        VERSION:     '0.2.0',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
@@ -23,9 +23,9 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Scan PDF 0.1.0 documentation" href="index.html" />
+    <link rel="top" title="Scan PDF 0.2.0 documentation" href="index.html" />
     <link rel="next" title="Contributing" href="contributing.html" />
-    <link rel="prev" title="Scan PDF API Reference (version 0.1.0)" href="index.html" /> 
+    <link rel="prev" title="Scan PDF API Reference (version 0.2.0)" href="index.html" /> 
   </head>
   <body>
     <div class="related">
@@ -38,16 +38,16 @@
           <a href="contributing.html" title="Contributing"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Scan PDF API Reference (version 0.1.0)"
+          <a href="index.html" title="Scan PDF API Reference (version 0.2.0)"
              accesskey="P">previous</a> |</li>
-        <li><a href="index.html">Scan PDF 0.1.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Scan PDF 0.2.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
-<li><a class="reference internal" href="#">Scan PDF -</a><ul>
+<li><a class="reference internal" href="#">Scan PDF - Easy scans in Linux with a document scanner like the Fujitsu ScanSnap</a><ul>
 <li><a class="reference internal" href="#features">Features</a></li>
 <li><a class="reference internal" href="#usage">Usage:</a></li>
 <li><a class="reference internal" href="#installation">Installation</a></li>
@@ -58,7 +58,7 @@
 
   <h4>Previous topic</h4>
   <p class="topless"><a href="index.html"
-                        title="previous chapter">Scan PDF API Reference (version 0.1.0)</a></p>
+                        title="previous chapter">Scan PDF API Reference (version 0.2.0)</a></p>
   <h4>Next topic</h4>
   <p class="topless"><a href="contributing.html"
                         title="next chapter">Contributing</a></p>
@@ -88,11 +88,18 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="scan-pdf">
-<h1>Scan PDF -<a class="headerlink" href="#scan-pdf" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="scan-pdf-easy-scans-in-linux-with-a-document-scanner-like-the-fujitsu-scansnap">
+<h1>Scan PDF - Easy scans in Linux with a document scanner like the Fujitsu ScanSnap<a class="headerlink" href="#scan-pdf-easy-scans-in-linux-with-a-document-scanner-like-the-fujitsu-scansnap" title="Permalink to this headline">¶</a></h1>
 <a class="reference external image-reference" href="http://badge.fury.io/py/scanpdf"><img alt="http://badge.fury.io/py/scanpdf.png" src="http://badge.fury.io/py/scanpdf.png" /></a>
 <a class="reference external image-reference" href="https://crate.io/packages/scanpdf?version=latest"><img alt="http://pypip.in/d/scanpdf/badge.png" src="http://pypip.in/d/scanpdf/badge.png" /></a>
-<a class="reference external image-reference" href="https://coveralls.io/r/virantha/scanpdf"><img alt="https://coveralls.io/repos/virantha/scanpdf/badge.png?branch=develop" src="https://coveralls.io/repos/virantha/scanpdf/badge.png?branch=develop" /></a>
+<p>If you&#8217;re looking for a simple way to use a multi-page scanner and get your
+document into a PDF in Linux without any proprietary or commercial software,
+then ScanPDF might be the solution.  I wrote it to quickly take the Linux SANE
+scanner system output image files, and process them into usable PDFs.  By
+usable, I mean PDFs that maintain their original scanned resolution, omit blank
+pages (if you&#8217;re scanning in duplex mode, for example), preserve color unless
+the original is greyscale/black and white, in which case they are intelligently
+down-converted to B/W PDFs to save space.</p>
 <ul class="simple">
 <li>Free and open-source software: ASL2 license</li>
 <li>Documentation: <a class="reference external" href="http://virantha.github.io/scanpdf/html">http://virantha.github.io/scanpdf/html</a></li>
@@ -104,33 +111,54 @@
 <li>Uses SANE/scanadf to automatically scan to multi-page compressed PDFs</li>
 <li><a class="reference external" href="http://virantha.github.io/scanpdf/html">Integrates with ScanBd</a> to respond to hardware button presses</li>
 <li>Automatically removes blank pages.</li>
+<li>Scans in color, and automatically down-converts into 1-bit B/W image for text/greyscale images</li>
 </ul>
 </div>
 <div class="section" id="usage">
 <h2>Usage:<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>The simplest usage is:</p>
-<div class="highlight-python"><div class="highlight"><pre>scanpdf scan &lt;pdffile&gt;
+<p>The simplest way to use this is:</p>
+<div class="highlight-python"><div class="highlight"><pre>scanpdf scan pdf &lt;pdffile&gt;
 </pre></div>
 </div>
-<p>Some of the options supported:</p>
-<div class="highlight-python"><div class="highlight"><pre>--dpi=&lt;dpi&gt;     DPI to scan in [default: 300]
---tmpdir=&lt;dir&gt;  Temporary directory [default: /tmp]
---face-up=&lt;true/false&gt;       Face-up scanning [default: True]
---keep-blanks   Don&#39;t check for and remove blank pages
---blank-threshold=&lt;ths&gt;  Percentage of white to be marked as blank [default: 0.97]
---post-process  Run unpaper to deskew/clean up
+<p>This will first perform the scan, and then the conversion to PDF.  If you want
+to split up the scan and the PDF conversion into two separate invocations (for
+reasons clarified below), then you can do:</p>
+<div class="highlight-python"><div class="highlight"><pre>scanpdf --tmpdir=tmp scan
+scanpdf --tmpdir=tmp pdf &lt;pdffile&gt;
+</pre></div>
+</div>
+<p>One reason for the separation might be if you want to keep scanning documents
+(very quick) while the post-processing (slower) for the PDF conversion is
+taking place in the background.   For instance, if you&#8217;re using the hardware
+button on the scanner to initiate scans (as detailed in <a class="reference external" href="http://virantha.com/2014/03/17/one-touch-scanning-with-fujitsu-scansnap-in-linux/">this</a> document), then
+you want to return immediately after the scan instead of waiting for the full
+conversion to PDF has taken place.</p>
+<p>You can optionally use the following switches to control if you&#8217;re putting pages face up or face down in the auto
+document feeder, if you want to skip the blank page processing, adjust the blank page detection threshold, or add
+additional post-processing using <a class="reference external" href="http://unpaper.berlios.de">unpaper</a>:</p>
+<div class="highlight-python"><div class="highlight"><pre>--dpi=&lt;dpi&gt;                 DPI to scan in [default: 300]
+--face-up=&lt;true/false&gt;      Face-up scanning [default: True]
+--keep-blanks               Don&#39;t check for and remove blank pages
+--blank-threshold=&lt;ths&gt;     Percentage of white to be marked as blank [default: 0.97]
+--post-process              Run unpaper to deskew/clean up
 </pre></div>
 </div>
 <p>Right now, I&#8217;m assuming this is getting called via ScanBD, so I don&#8217;t have the option to manually specify the
 scanner.  If you really want to use this standalone, for now, please just set the <tt class="docutils literal"><span class="pre">SCANBD_DEVICE</span></tt> environment
-variable to your scanner device name before running this script</p>
+variable to your scanner device name before running this script.</p>
 </div>
 <div class="section" id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
 <div class="highlight-python"><div class="highlight"><pre>$ pip install scanpdf
 </pre></div>
 </div>
-<p>Requires ImageMagick and SANE to be installed.</p>
+<p>Requires ImageMagick and SANE to be installed, for the command line tools:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">convert</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">identify</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">ps2pdf</span></tt></li>
+<li><tt class="docutils literal"><span class="pre">scanadf</span></tt></li>
+</ul>
 </div>
 <div class="section" id="disclaimer">
 <h2>Disclaimer<a class="headerlink" href="#disclaimer" title="Permalink to this headline">¶</a></h2>
@@ -155,9 +183,9 @@ WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</p>
           <a href="contributing.html" title="Contributing"
              >next</a> |</li>
         <li class="right" >
-          <a href="index.html" title="Scan PDF API Reference (version 0.1.0)"
+          <a href="index.html" title="Scan PDF API Reference (version 0.2.0)"
              >previous</a> |</li>
-        <li><a href="index.html">Scan PDF 0.1.0 documentation</a> &raquo;</li> 
+        <li><a href="index.html">Scan PDF 0.2.0 documentation</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
