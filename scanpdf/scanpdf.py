@@ -210,6 +210,8 @@ class ScanPdf(object):
 
         cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (page, page)
         out = self.cmd(cmd)
+        # Remove the old file
+        os.remove(page)
         os.chdir(cwd)
         return out_page
 
