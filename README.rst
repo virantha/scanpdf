@@ -27,6 +27,7 @@ Features
 * `Integrates with ScanBd <http://virantha.github.io/scanpdf/html>`_ to respond to hardware button presses
 * Automatically removes blank pages.
 * Scans in color, and automatically down-converts into 1-bit B/W image for text/greyscale images
+* Auto-crops to the proper page size.
 
 Usage:
 ------

@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: scanpdf
-Version: 0.2.0
+Version: 0.3.0
 Summary: Utility to use SANE/scanadf to scan to PDF
 Home-page: UNKNOWN
 Author: Virantha N. Ekanayake
@@ -94,6 +94,8 @@ Description: Scan PDF - Easy scans in Linux with a document scanner like the Fuj
         * ``identify``
         * ``ps2pdf``
         * ``scanadf``
+        
+        Also requires epstopdf.
         
         Disclaimer
         ----------
