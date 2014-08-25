@@ -87,6 +87,8 @@ Requires ImageMagick and SANE to be installed, for the command line tools:
 * ``ps2pdf``
 * ``scanadf``
 
+Also requires epstopdf.
+
 Disclaimer
 ----------
 The software is distributed on an "AS IS" BASIS, WITHOUT

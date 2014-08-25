@@ -81,6 +81,8 @@ class ScanPdf(object):
                 '--resolution %sdpi' % self.dpi,
                 '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
+                '-y 876',
+                '--page-height 876',
                 ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
@@ -160,6 +162,26 @@ class ScanPdf(object):
         os.chdir(cwd)
         return processed_pages
 
+    def run_crop(self, page_files):
+        cwd = os.getcwd()
+        os.chdir(self.tmp_dir)
+        crop_pages = []
+        for i, page in enumerate(page_files):
+            logging.debug("Cropping page %d" % i)
+            crop_page = '%s.crop' % page
+            crop_pages.append(crop_page)
+            c = ['convert',
+                    '-fuzz 20%',
+                    '-trim',
+                    ' %s ' % page,
+                    crop_page,
+                ]
+            self.cmd(c)
+            os.remove(page)
+
+        os.chdir(cwd)
+        return crop_pages
+
     def run_convert(self, page_files):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
@@ -179,6 +201,10 @@ class ScanPdf(object):
                 ps_filename,
                 pdf_basename,
             ]
+        c = ['epstopdf',
+                ps_filename,
+                ]
+        
         self.cmd(c)
         shutil.move(pdf_basename, self.pdf_filename)
         for filename in page_files+[ps_filename]:
@@ -340,6 +366,9 @@ class ScanPdf(object):
                 pages = self.reorder_face_up(pages)
             
             logging.debug( pages )
+
+            # Crop the pages
+            pages = self.run_crop(pages)
 
             # Now, check if color or bw
             pages = self.convert_to_bw(pages)
