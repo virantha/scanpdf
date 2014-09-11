@@ -82,7 +82,7 @@ class ScanPdf(object):
                 '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
                 '-y 876',
-                '--page-height 876',
+                #'--page-height 279',
                 ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
