@@ -17,7 +17,7 @@
 Usage:
     scanpdf [options] scan 
     scanpdf [options] pdf <pdffile> 
-    scanpdf [options] scan pdf <pdfile> 
+    scanpdf [options] scan pdf <pdffile> 
 
 
 Options:
@@ -25,6 +25,7 @@ Options:
     -d --debug                  Debug logging
     --dpi=<dpi>                 DPI to scan in [default: 300]
     --tmpdir=<dir>              Temporary directory 
+    --keep-tmpdir               Whether to keep the tmp dir after scanning or not [default: False]
     --face-up=<true/false>      Face-up scanning [default: True]
     --keep-blanks               Don't check for and remove blank pages
     --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
@@ -82,7 +83,7 @@ class ScanPdf(object):
                 '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
                 '-y 876',
-                '--page-height 876',
+                '--page-height 376',
                 ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
