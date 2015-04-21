@@ -80,7 +80,6 @@ class ScanPdf(object):
                 '--source "ADF Duplex"',
                 '--mode Color',
                 '--resolution %sdpi' % self.dpi,
-                '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
                 '-y 876',
                 '--page-height 376',
