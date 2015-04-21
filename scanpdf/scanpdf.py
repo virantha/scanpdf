@@ -155,10 +155,12 @@ class ScanPdf(object):
         
         processed_pages = []
         for page in page_files:
+            ppm_page = '%s.ppm' % page
+            os.rename(page, ppm_page)
             processed_page = '%s_unpaper' % page
-            c = ['unpaper', page, processed_page]
+            c = ['unpaper', ppm_page, processed_page]
             self.cmd(c) 
-            os.remove(page)
+            os.remove(ppm_page)
             processed_pages.append(processed_page)
         os.chdir(cwd)
         return processed_pages
