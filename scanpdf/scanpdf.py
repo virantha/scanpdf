@@ -80,10 +80,9 @@ class ScanPdf(object):
                 '--source "ADF Duplex"',
                 '--mode Color',
                 '--resolution %sdpi' % self.dpi,
-                '--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
-                '-y 876',
-                '--page-height 376',
+                '-y 279.364',
+                '--page-height 279.364',
                 ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
@@ -106,7 +105,7 @@ class ScanPdf(object):
     def get_pages(self):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
-        pages = glob.glob('./page_*')
+        pages = glob.glob('page_*')
         pages.sort(key = self._natural_keys)
         os.chdir(cwd)
         return pages
@@ -202,10 +201,7 @@ class ScanPdf(object):
                 ps_filename,
                 pdf_basename,
             ]
-        c = ['epstopdf',
-                ps_filename,
-                ]
-        
+
         self.cmd(c)
         shutil.move(pdf_basename, self.pdf_filename)
         for filename in page_files+[ps_filename]:
