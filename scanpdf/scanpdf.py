@@ -136,49 +136,41 @@ class ScanPdf(object):
             match = mStdDev.search(line)
             if match:
                 stdev = float(match.group('percent'))
-                if stdev > 0.1:
+                logging.info(os.path.basename(filename) + " std. dev: " +  "{0:.4f}".format(stdev))
+                if stdev > 1. - self.blank_threshold:
                     return False
         return True
 
         # OLD CODE - doesn't work for color images
-        c = 'convert %s -shave 1%%x1%%  -format "%%[fx:mean]" info:' % filename
-        result = self.cmd(c)
-        if float(result.strip()) > self.blank_threshold:
-            return True
-        else:
-            return False
+        # c = 'convert %s -shave 1%%x1%%  -format "%%[fx:mean]" info:' % filename
+        # result = self.cmd(c)
+        # if float(result.strip()) > self.blank_threshold:
+        #     return True
+        # else:
+        #     return False
 
-    def run_postprocess(self, page_files):
-        cwd = os.getcwd()
-        os.chdir(self.tmp_dir)
-        
-        processed_pages = []
-        for page in page_files:
-            processed_page = '%s_unpaper' % page
-            c = ['unpaper', page, processed_page]
-            self.cmd(c) 
-            os.remove(page)
-            processed_pages.append(processed_page)
-        os.chdir(cwd)
-        return processed_pages
+    def run_postprocess(self, pdf_file):
+        c = ['pdfsandwich','-coo', '\"-deskew 40%\"', pdf_file]
+        self.cmd(c)
+        filename, file_extension = os.path.splitext(pdf_file)
+        ocr_file = filename + "_ocr" + file_extension
+        os.remove(pdf_file)
+        shutil.move(ocr_file, pdf_file)
 
-    def run_crop(self, page_files):
+    def run_deskew(self, page_files):
         cwd = os.getcwd()
+        deskew = os.path.dirname(os.path.realpath(__file__)) + '/../resources/deskew64'
         os.chdir(self.tmp_dir)
         crop_pages = []
         for i, page in enumerate(page_files):
-            logging.debug("Cropping page %d" % i)
-            crop_page = '%s.crop' % page
+            logging.debug("Deskewing page %d" % i)
+            crop_page = '%s.deskew' % page
             crop_pages.append(crop_page)
-            c = ['convert',
-                    '-fuzz 20%',
-                    '-trim',
-                    ' %s ' % page,
-                    crop_page,
-                ]
-            self.cmd(c)
+            c = [deskew,' %s ' % page, '-o', 'out.ppm']
+            result = self.cmd(c)
+            logging.debug("deskew result: " + result)
+            shutil.move('out.ppm', crop_page)
             os.remove(page)
-
         os.chdir(cwd)
         return crop_pages
 
@@ -191,7 +183,6 @@ class ScanPdf(object):
         ps_filename = ps_filename.replace(".pdf", ".ps")
         c = ['convert',
                 '-density %s' % self.dpi,
-                '-rotate 180',
                 ' '.join(page_files),
                 ps_filename
             ]
@@ -217,7 +208,7 @@ class ScanPdf(object):
         new_pages = []
         for i, page in enumerate(pages):
             filename = os.path.join(self.tmp_dir, page)
-            logging.info("Checking if %s is bw..." % filename)
+            logging.info("checking if " + os.path.basename(filename) + " is bw...")
             if self._is_color(filename):
                 new_pages.append(page)
             else: # COnvert to BW
@@ -359,13 +350,13 @@ class ScanPdf(object):
             # Now, convert the files to ps
             pages = self.get_pages()
             logging.debug( pages )
-            if self.args['--face-up']:
+            if self.args['--face-up'] == 'True': # Default is a text value of 'True'
                 pages = self.reorder_face_up(pages)
             
             logging.debug( pages )
 
-            # Crop the pages
-            pages = self.run_crop(pages)
+            # Deskew the pages
+            pages = self.run_deskew(pages)
 
             # Now, check if color or bw
             pages = self.convert_to_bw(pages)
@@ -376,7 +367,7 @@ class ScanPdf(object):
                 no_blank_pages = []
                 for i,page in enumerate(pages):
                     filename = os.path.join(self.tmp_dir, page)
-                    logging.info("Checking if %s is blank..." % filename)
+                    logging.info("Checking if %s is blank..." % os.path.basename(filename))
                     if not self.is_blank(filename):
                         no_blank_pages.append(page)
                     else:
@@ -385,13 +376,14 @@ class ScanPdf(object):
                 pages = no_blank_pages
                     
             logging.debug( pages )
-
-            if self.post_process:
-                pages = self.run_postprocess(pages)
                 
             self.run_convert(pages)
+
+            if self.post_process:
+                self.run_postprocess(self.pdf_filename)
         
 def main():
+    os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__ )
     script = ScanPdf()
     print args
