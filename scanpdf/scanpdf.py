@@ -30,7 +30,7 @@ Options:
     --face-up=<true/false>      Face-up scanning [default: True]
     --keep-blanks               Don't check for and remove blank pages
     --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
-    --post-process              Run unpaper to deskew/clean up
+    --post-process              Run pdfsandwich for text recognition
     
 """
 
@@ -71,7 +71,7 @@ class ProcessPage:
             self.remove_blank()
 
     def run_deskew(self):
-        deskew = os.path.dirname(os.path.realpath(__file__)) + '/../resources/deskew64'
+        deskew = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'deskew64'
         logging.info("Deskewing: " + os.path.basename(self.page))
         ppm_page = '%s.ppm' % self.page
         c = [deskew, ' %s ' % self.page, '-o', ppm_page]
@@ -163,7 +163,7 @@ class ProcessPage:
                          ]
                 colors.append(color)
         # sort
-        colors.sort(reverse=True, key=lambda x: x[0])
+        colors.sort(reverse=True, key=lambda y: y[0])
         logging.debug(colors)
         is_color = False
         logging.debug(colors)
@@ -188,7 +188,7 @@ class ScanPdf(object):
     pdf_filename = None
     dpi = None
     keep_blanks = None
-    blank_threhold = None
+    blank_threshold = None
     post_process = None
     """
         The main class.  Performs the following functions:
@@ -364,7 +364,7 @@ class ScanPdf(object):
         # Blank checks
         self.keep_blanks = argv['--keep-blanks']
         self.blank_threshold = float(argv['--blank-threshold'])
-        assert (self.blank_threshold >= 0 and self.blank_threshold <= 1.0)
+        assert (0 <= self.blank_threshold <= 1.0)
         self.post_process = argv['--post-process']
 
     def go(self, argv):
