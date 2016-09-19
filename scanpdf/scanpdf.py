@@ -115,13 +115,13 @@ class ScanPdf(object):
         os.chdir(cwd)
         return pages
 
-    def reorder_face_up(self, pages):
-        assert len(pages) % 2 == 0, "Why is page count not even for duplexing??"
+    def reorder_face_up(self):
+        assert len(self.pages) % 2 == 0, "Why is page count not even for duplexing??"
         logging.info("Reordering pages")
         # for i in range(0,len(pages),2):
         # pages[i], pages[i+1] = pages[i+1], pages[i]
-        pages.reverse()
-        return pages
+        self.pages.reverse()
+
 
     def is_blank(self, filename):
         """
@@ -152,11 +152,11 @@ class ScanPdf(object):
         # else:
         #     return False
 
-    def run_crop(self, page_files):
+    def run_crop(self):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
         crop_pages = []
-        for i, page in enumerate(page_files):
+        for i, page in enumerate(self.pages):
             logging.debug("Cropping page %d" % i)
             crop_page = '%s.crop' % page
             crop_pages.append(crop_page)
@@ -168,9 +168,8 @@ class ScanPdf(object):
                  ]
             self.cmd(c)
             os.remove(page)
-
+        self.pages = crop_pages
         os.chdir(cwd)
-        return crop_pages
 
     def run_postprocess(self, pdf_file):
         c = ['pdfsandwich', '-coo', '\"-deskew 40%\"', pdf_file]
@@ -180,22 +179,23 @@ class ScanPdf(object):
         os.remove(pdf_file)
         shutil.move(ocr_file, pdf_file)
 
-    def run_deskew(self, page_files):
+    def run_deskew(self):
         cwd = os.getcwd()
         deskew = os.path.dirname(os.path.realpath(__file__)) + '/../resources/deskew64'
         os.chdir(self.tmp_dir)
-        crop_pages = []
-        for i, page in enumerate(page_files):
+        deskew_pages = []
+        for i, page in enumerate(self.pages):
             logging.debug("Deskewing page %d" % i)
-            crop_page = '%s.deskew' % page
-            crop_pages.append(crop_page)
+            deskew_page = '%s.deskew' % page
+            deskew_pages.append(deskew_page)
             c = [deskew, ' %s ' % page, '-o', 'out.ppm']
             result = self.cmd(c)
             logging.debug("deskew result: " + result)
-            shutil.move('out.ppm', crop_page)
+            shutil.move('out.ppm', deskew_page)
             os.remove(page)
+        self.pages = deskew_pages
         os.chdir(cwd)
-        return crop_pages
+
 
     def file_save(self, source_file):
         f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pdf")
@@ -206,7 +206,7 @@ class ScanPdf(object):
         os.remove(target_path)
         shutil.move(source_file, target_path)
 
-    def run_convert(self, page_files, post_process):
+    def run_convert(self, post_process):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
         if self.pdf_filename is not None:
@@ -217,7 +217,7 @@ class ScanPdf(object):
         ps_filename = ps_filename.replace(".pdf", ".ps")
         c = ['convert',
              '-density %s' % self.dpi,
-             ' '.join(page_files),
+             ' '.join(self.pages),
              ps_filename
              ]
         self.cmd(c)
@@ -226,7 +226,6 @@ class ScanPdf(object):
              ps_filename,
              pdf_basename,
              ]
-
         self.cmd(c)
         if post_process:
             logging.info("running pdf sandwich for text recognition...")
@@ -236,7 +235,7 @@ class ScanPdf(object):
         else:
             source_file = os.path.join(self.tmp_dir, pdf_basename)
             self.file_save(source_file)
-        for filename in page_files + [ps_filename]:
+        for filename in self.pages + [ps_filename]:
             os.remove(filename)
 
         # IF we did the scan, then remove the tmp dir too
@@ -244,9 +243,9 @@ class ScanPdf(object):
             os.rmdir(self.tmp_dir)
         os.chdir(cwd)
 
-    def convert_to_bw(self, pages):
+    def convert_to_bw(self):
         new_pages = []
-        for i, page in enumerate(pages):
+        for i, page in enumerate(self.pages):
             filename = os.path.join(self.tmp_dir, page)
             logging.info("checking if " + os.path.basename(filename) + " is bw...")
             if self._is_color(filename):
@@ -254,7 +253,8 @@ class ScanPdf(object):
             else:  # COnvert to BW
                 bw_page = self._page_to_bw(filename)
                 new_pages.append(bw_page)
-        return new_pages
+        self.pages = new_pages
+
 
     def _page_to_bw(self, page):
         out_page = "%s_bw" % page
@@ -390,42 +390,46 @@ class ScanPdf(object):
 
         if self.args['pdf']:
             # Now, convert the files to ps
-            pages = self.get_pages()
-            logging.debug(pages)
+            self.pages = self.get_pages()
+            logging.debug(self.pages)
             if self.args['--face-up'] == 'True':  # Default is a text value of 'True'
-                pages = self.reorder_face_up(pages)
+                self.reorder_face_up()
 
-            logging.debug(pages)
+            logging.debug(self.pages)
 
             # Deskew the pages
-            pages = self.run_deskew(pages)
+            self.run_deskew()
 
             if self.args['--crop']:
-                pages = self.run_crop(pages)
+                self.run_crop()
 
             # Now, check if color or bw
-            pages = self.convert_to_bw(pages)
-            logging.debug(pages)
+            self.convert_to_bw()
+            logging.debug(self.pages)
 
             # Run blanks
             if not self.keep_blanks:
-                no_blank_pages = []
-                for i, page in enumerate(pages):
-                    filename = os.path.join(self.tmp_dir, page)
-                    logging.info("Checking if %s is blank..." % os.path.basename(filename))
-                    if not self.is_blank(filename):
-                        no_blank_pages.append(page)
-                    else:
-                        logging.info("  page %s is blank, removing..." % i)
-                        os.remove(filename)
-                pages = no_blank_pages
+                self.remove_blanks()
 
-            logging.debug(pages)
+            logging.debug(self.pages)
 
             if self.post_process:
-                self.run_convert(pages, True)
+                self.run_convert(True)
             else:
-                self.run_convert(pages, False)
+                self.run_convert(False)
+
+    def remove_blanks(self):
+        no_blank_pages = []
+        for i, page in enumerate(self.pages):
+            filename = os.path.join(self.tmp_dir, page)
+            logging.info("Checking if %s is blank..." % os.path.basename(filename))
+            if not self.is_blank(filename):
+                no_blank_pages.append(page)
+            else:
+                logging.info("  page %s is blank, removing..." % i)
+                os.remove(filename)
+        self.pages = no_blank_pages
+
 
 
 def main():
