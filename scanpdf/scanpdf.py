@@ -37,6 +37,7 @@ import sys, os
 import logging
 import shutil
 import re
+import tkFileDialog
 
 from version import __version__
 import docopt
@@ -174,11 +175,22 @@ class ScanPdf(object):
         os.chdir(cwd)
         return crop_pages
 
-    def run_convert(self, page_files):
+    def file_save(self, source_file):
+        f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pdf")
+        if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
+            return
+        target_path = f.name
+        f.close()
+        os.remove(target_path)
+        shutil.move(source_file, target_path)
+
+    def run_convert(self, page_files, post_process):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
-
-        pdf_basename = os.path.basename(self.pdf_filename)
+        if self.pdf_filename is not None:
+            pdf_basename = os.path.basename(self.pdf_filename)
+        else:
+            pdf_basename = "temp.pdf"
         ps_filename = pdf_basename
         ps_filename = ps_filename.replace(".pdf", ".ps")
         c = ['convert',
@@ -194,7 +206,14 @@ class ScanPdf(object):
             ]
 
         self.cmd(c)
-        shutil.move(pdf_basename, self.pdf_filename)
+        if post_process:
+            logging.info("running pdf sandwich for text recognition...")
+            self.run_postprocess(pdf_basename)
+        if self.pdf_filename is not None:
+            shutil.move(pdf_basename, self.pdf_filename)
+        else:
+            source_file = os.path.join(self.tmp_dir, pdf_basename)
+            self.file_save(source_file)
         for filename in page_files+[ps_filename]:
             os.remove(filename)
            
@@ -305,7 +324,12 @@ class ScanPdf(object):
         if argv['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')                
         if self.args['pdf']:
-            self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+            if self.args['<pdffile>'] != 'None':
+                self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+                logging.info('saving to file: ' + self.pdf_filename)
+            else:
+                logging.info('<pdffile> is \"None\", saving file via dialog...')
+                self.pdf_filename = None
 
         self.dpi = self.args['--dpi']
 
@@ -376,12 +400,12 @@ class ScanPdf(object):
                 pages = no_blank_pages
                     
             logging.debug( pages )
-                
-            self.run_convert(pages)
 
             if self.post_process:
-                self.run_postprocess(self.pdf_filename)
-        
+                self.run_convert(pages, True)
+            else:
+                self.run_convert(pages, False)
+
 def main():
     os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__ )
