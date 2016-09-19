@@ -29,8 +29,9 @@ Options:
     --keep-tmpdir               Whether to keep the tmp dir after scanning or not [default: False]
     --face-up=<true/false>      Face-up scanning [default: True]
     --keep-blanks               Don't check for and remove blank pages
-    --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
-    --post-process              Run pdfsandwich for text recognition
+    --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97]
+    --post-process              Process finished images with unpaper
+    --text-recognize            Run pdfsandwich for text recognition
     
 """
 
@@ -64,11 +65,14 @@ class ProcessPage:
 
     def process(self):
         self.run_deskew()
-        if self.scanpdf.args['--crop']:
+        if self.scanpdf.crop:
             self.run_crop()
         self.convert_to_bw()
         if not self.scanpdf.keep_blanks:
             self.remove_blank()
+        if self.page is not None and self.scanpdf.post_process:
+            self.run_postprocess()
+
 
     def run_deskew(self):
         deskew = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'deskew64'
@@ -87,6 +91,16 @@ class ProcessPage:
         self.scanpdf.cmd(c)
         os.remove(self.page)
         self.page = crop_page
+
+    def run_postprocess(self):
+        logging.info("Post-processing with unpaper: " + os.path.basename(self.page))
+        shutil.move(self.page, '%s.ppm' % self.page)
+        self.page = '%s.ppm' % self.page
+        processed_page = '%s_unpaper' % self.page
+        c = ['unpaper', self.page, processed_page]
+        self.scanpdf.cmd(c)
+        os.remove(self.page)
+        self.page = processed_page
 
     def convert_to_bw(self):
         logging.info("Checking if: " + os.path.basename(self.page) + " is bw...")
@@ -189,7 +203,9 @@ class ScanPdf(object):
     dpi = None
     keep_blanks = None
     blank_threshold = None
+    crop = None
     post_process = None
+    text_recognize = None
     """
         The main class.  Performs the following functions:
 
@@ -270,7 +286,7 @@ class ScanPdf(object):
         # else:
         #     return False
 
-    def run_postprocess(self, pdf_file):
+    def run_text_recognize(self, pdf_file):
         c = ['pdfsandwich', '-coo', '\"-deskew 40%\"', pdf_file]
         self.cmd(c)
         filename, file_extension = os.path.splitext(pdf_file)
@@ -288,7 +304,7 @@ class ScanPdf(object):
         os.remove(target_path)
         shutil.move(source_file, target_path)
 
-    def run_convert(self, post_process):
+    def run_convert(self, text_recognize):
         os.chdir(self.tmp_dir)
         if self.pdf_filename is not None:
             pdf_basename = os.path.basename(self.pdf_filename)
@@ -308,9 +324,9 @@ class ScanPdf(object):
              pdf_basename,
              ]
         self.cmd(c)
-        if post_process:
+        if text_recognize:
             logging.info("running pdf sandwich for text recognition...")
-            self.run_postprocess(pdf_basename)
+            self.run_text_recognize(pdf_basename)
         if self.pdf_filename is not None:
             shutil.move(pdf_basename, self.pdf_filename)
         else:
@@ -365,6 +381,8 @@ class ScanPdf(object):
         self.keep_blanks = argv['--keep-blanks']
         self.blank_threshold = float(argv['--blank-threshold'])
         assert (0 <= self.blank_threshold <= 1.0)
+        self.crop = argv['--crop']
+        self.text_recognize = argv['--text-recognize']
         self.post_process = argv['--post-process']
 
     def go(self, argv):
@@ -403,7 +421,7 @@ class ScanPdf(object):
             self.pages = [page for page in results if page is not None]
 
             logging.debug(self.pages)
-            self.run_convert(self.post_process)
+            self.run_convert(self.text_recognize)
 
             end = time.time()
             logging.info("End: " + time.strftime(date_format))
