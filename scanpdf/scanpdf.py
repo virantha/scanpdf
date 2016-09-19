@@ -41,19 +41,150 @@ import re
 import shutil
 import subprocess
 import sys
-import time
 import tkFileDialog
 import time
 import docopt
+import multiprocessing
+from multiprocessing.dummy import Pool as Threadpool
 
 from version import __version__
 date_format = '%m/%d/%Y %H:%M:%S'
+
+
+class ProcessPage:
+    page = None
+    scanpdf = None
+
+    def __init__(self, page, scanpdf):
+        """
+        """
+        self.page = page
+        self.scanpdf = scanpdf
+        os.chdir(self.scanpdf.tmp_dir)
+
+    def process(self):
+        self.run_deskew()
+        if self.scanpdf.args['--crop']:
+            self.run_crop()
+        self.convert_to_bw()
+        if not self.scanpdf.keep_blanks:
+            self.remove_blank()
+
+    def run_deskew(self):
+        deskew = os.path.dirname(os.path.realpath(__file__)) + '/../resources/deskew64'
+        logging.info("Deskewing: " + os.path.basename(self.page))
+        ppm_page = '%s.ppm' % self.page
+        c = [deskew, ' %s ' % self.page, '-o', ppm_page]
+        result = self.scanpdf.cmd(c)
+        logging.debug("deskew result: " + result)
+        os.remove(self.page)
+        self.page = ppm_page
+
+    def run_crop(self):
+        logging.info("Cropping: " + os.path.basename(self.page))
+        crop_page = '%s.crop' % self.page
+        c = ['convert', '-fuzz 20%', '-trim', self.page, crop_page, ]  # TODO: Check comma status
+        self.scanpdf.cmd(c)
+        os.remove(self.page)
+        self.page = crop_page
+
+    def convert_to_bw(self):
+        logging.info("Checking if: " + os.path.basename(self.page) + " is bw...")
+        if not self._is_color():
+            self._page_to_bw()
+
+    def _page_to_bw(self):
+        bw_page = "%s_bw" % self.page
+        c = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (self.page, self.page)
+        self.scanpdf.cmd(c)
+        # Remove the old file
+        os.remove(self.page)
+        self.page = bw_page
+
+    @staticmethod
+    def run(args):
+        process_page = ProcessPage(args[0], args[1])
+        process_page.process()
+        return process_page.page
+
+    def remove_blank(self):
+        logging.info("Checking if: " + os.path.basename(self.page) + " is blank")
+        if self.is_blank():
+            os.remove(self.page)
+            self.page = None
+
+    def is_blank(self):
+        """
+        :return: true if image is blank
+        """
+        if not os.path.exists(self.page):
+            return True
+        c = 'identify -verbose %s' % self.page
+        result = self.scanpdf.cmd(c)
+        mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
+        for line in result.splitlines():
+            match = mStdDev.search(line)
+            if match:
+                stdev = float(match.group('percent'))
+                logging.info(os.path.basename(self.page) + " std. dev: " + "{0:.4f}".format(stdev))
+                if stdev > 1. - self.scanpdf.blank_threshold:
+                    return False
+        return True
+
+    def _is_color(self):
+        """
+        Run the following command from ImageMagick:
+        convert holi.pdf -colors 8 -depth 8 -format %c histogram:info:-
+        This outputs something like the following:
+        10831: ( 24, 26, 26,255) #181A1A srgba(24,26,26,1)
+        4836: ( 55, 87, 79,255) #37574F srgba(55,87,79,1)
+        6564: ( 77,138,121,255) #4D8A79 srgba(77,138,121,1)
+        4997: ( 86, 96, 93,255) #56605D srgba(86,96,93,1)
+        7005: ( 92,153,139,255) #5C998B srgba(92,153,139,1)
+        2479: (143,118,123,255) #8F767B srgba(143,118,123,1)
+        8870: (169,176,170,255) #A9B0AA srgba(169,176,170,1)
+        442906: (254,254,254,255) #FEFEFE srgba(254,254,254,1)
+        1053: (  0,  0,  0,255) #000000 black
+        484081: (255,255,255,255) #FFFFFF white
+        """
+        c = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % self.page
+        out = self.scanpdf.cmd(c)
+        m_line = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+).+""")
+        colors = []
+        for line in out.splitlines():
+            match_line = m_line.search(line)
+            if match_line:
+                logging.debug("Found RGB values")
+                color = [int(x) for x in (match_line.group('count'),
+                                          match_line.group('R'),
+                                          match_line.group('G'),
+                                          match_line.group('B'),
+                                          )
+                         ]
+                colors.append(color)
+        # sort
+        colors.sort(reverse=True, key=lambda x: x[0])
+        logging.debug(colors)
+        is_color = False
+        logging.debug(colors)
+        for color in colors:
+            # Calculate the mean differences between the RGB components
+            # Shades of grey will be very close to zero in this metric...
+            diff = float(sum([abs(color[2] - color[1]),
+                              abs(color[3] - color[1]),
+                              abs(color[3] - color[2]),
+                              ])) / 3
+            if diff > 20:
+                is_color = True
+                logging.debug("Found color")
+        return is_color
+
 
 class ScanPdf(object):
     pages = None
     cwd = None
     """
-        The main clas.  Performs the following functions:
+        The main class.  Performs the following functions:
 
     """
 
@@ -140,7 +271,6 @@ class ScanPdf(object):
         os.remove(pdf_file)
         shutil.move(ocr_file, pdf_file)
 
-
     def file_save(self, source_file):
         f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pdf")
         if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
@@ -192,11 +322,6 @@ class ScanPdf(object):
 
             :param argv: usually just sys.argv[1:]
             :returns: Nothing
-
-            :ivar debug: Enable logging debug statements
-            :ivar verbose: Enable verbose logging
-            :ivar config: Dict of the config file
-
         """
         self.args = argv
 
@@ -237,149 +362,8 @@ class ScanPdf(object):
         assert (self.blank_threshold >= 0 and self.blank_threshold <= 1.0)
         self.post_process = argv['--post-process']
 
-    class ProcessPage:
-        page = None
-        scanpdf = None
-
-
-        def __init__(self, page, scanpdf):
-            """
-            """
-            self.page = page
-            self.scanpdf = scanpdf
-            os.chdir(self.scanpdf.tmp_dir)
-
-
-        def process(self):
-            self.run_deskew()
-            if self.scanpdf.args['--crop']:
-                self.run_crop()
-            self.convert_to_bw()
-            if not self.scanpdf.keep_blanks:
-                self.remove_blank()
-
-        def run_deskew(self):
-            deskew = os.path.dirname(os.path.realpath(__file__)) + '/../resources/deskew64'
-            logging.info("Deskewing: " + os.path.basename(self.page))
-            ppm_page = '%s.ppm' % self.page
-            c = [deskew, ' %s ' % self.page, '-o', ppm_page]
-            result = self.cmd(c)
-            logging.debug("deskew result: " + result)
-            os.remove(self.page)
-            self.page = ppm_page
-
-        def run_crop(self):
-            logging.info("Cropping: " + os.path.basename(self.page))
-            crop_page = '%s.crop' % self.page
-            c = ['convert', '-fuzz 20%', '-trim', self.page, crop_page,] # TODO: Check comma status
-            self.cmd(c)
-            os.remove(self.page)
-            self.page = crop_page
-
-        def cmd(self, cmd_list):
-            if isinstance(cmd_list, list):
-                cmd_list = ' '.join(cmd_list)
-            logging.debug("Running cmd: %s" % cmd_list)
-            try:
-                out = subprocess.check_output(cmd_list, stderr=subprocess.STDOUT, shell=True)
-                logging.debug(out)
-                return out
-            except subprocess.CalledProcessError as e:
-                print e.output
-                self._error("Could not run command %s" % cmd_list)
-
-        def convert_to_bw(self):
-            logging.info("Checking if: " + os.path.basename(self.page) + " is bw...")
-            if  not self._is_color():
-                self._page_to_bw()
-
-
-        def _page_to_bw(self):
-            bw_page = "%s_bw" % self.page
-            cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (self.page, self.page)
-            out = self.cmd(cmd)
-            # Remove the old file
-            os.remove(self.page)
-            self.page = bw_page
-
-        def remove_blank(self):
-            logging.info("Checking if: " + os.path.basename(self.page) + " is blank")
-            if self.is_blank():
-                os.remove(self.page)
-                self.page = None
-
-        def is_blank(self):
-            """
-
-            :param filename: page to examine
-            :return: true if image is blank
-            """
-            if not os.path.exists(self.page):
-                return True
-            c = 'identify -verbose %s' % self.page
-            result = self.cmd(c)
-            mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
-            for line in result.splitlines():
-                match = mStdDev.search(line)
-                if match:
-                    stdev = float(match.group('percent'))
-                    logging.info(os.path.basename(self.page) + " std. dev: " + "{0:.4f}".format(stdev))
-                    if stdev > 1. - self.scanpdf.blank_threshold:
-                        return False
-            return True
-
-
-        def _is_color(self):
-            """
-            Run the following command from ImageMagick:
-            convert holi.pdf -colors 8 -depth 8 -format %c histogram:info:-
-            This outputs something like the following:
-            10831: ( 24, 26, 26,255) #181A1A srgba(24,26,26,1)
-            4836: ( 55, 87, 79,255) #37574F srgba(55,87,79,1)
-            6564: ( 77,138,121,255) #4D8A79 srgba(77,138,121,1)
-            4997: ( 86, 96, 93,255) #56605D srgba(86,96,93,1)
-            7005: ( 92,153,139,255) #5C998B srgba(92,153,139,1)
-            2479: (143,118,123,255) #8F767B srgba(143,118,123,1)
-            8870: (169,176,170,255) #A9B0AA srgba(169,176,170,1)
-            442906: (254,254,254,255) #FEFEFE srgba(254,254,254,1)
-            1053: (  0,  0,  0,255) #000000 black
-            484081: (255,255,255,255) #FFFFFF white
-            """
-            c = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % self.page
-            out = self.cmd(c)
-            mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+).+""")
-            colors = []
-            for line in out.splitlines():
-                matchLine = mLine.search(line)
-                if matchLine:
-                    logging.debug("Found RGB values")
-                    color = [int(x) for x in (matchLine.group('count'),
-                                              matchLine.group('R'),
-                                              matchLine.group('G'),
-                                              matchLine.group('B'),
-                                              )
-                             ]
-                    colors.append(color)
-            # sort
-            colors.sort(reverse=True, key=lambda x: x[0])
-            logging.debug(colors)
-            is_color = False
-            logging.debug(colors)
-            for color in colors:
-                # Calculate the mean differences between the RGB components
-                # Shades of grey will be very close to zero in this metric...
-                diff = float(sum([abs(color[2] - color[1]),
-                                  abs(color[3] - color[1]),
-                                  abs(color[3] - color[2]),
-                                  ])) / 3
-                if diff > 20:
-                    is_color = True
-                    logging.debug("Found color")
-            return is_color
-
-
     def go(self, argv):
-        """ 
+        """
             The main entry point into ScanPdf
 
             #. Get the options
@@ -387,8 +371,6 @@ class ScanPdf(object):
             #. Run scanadf
         """
         # Read the command line options
-
-
         self.get_options(argv)
         start = time.time()
         logging.info("Starting: " + time.strftime(date_format))
@@ -403,14 +385,17 @@ class ScanPdf(object):
             if self.args['--face-up'] == 'True':  # Default is a text value of 'True'
                 self.reorder_face_up()
 
-            processed_pages = []
-            for page in self.pages:
-                processed_page = self.ProcessPage(page, self)
-                processed_page.process()
-                if processed_page.page is not None:
-                    processed_pages.append(processed_page)
+            start_pages = [(page, self) for page in self.pages]
 
-            self.pages = [processed_page.page for processed_page in processed_pages]
+            threads_to_run = multiprocessing.cpu_count()
+            logging.info('Processing pages with {0:d} threads...'.format(threads_to_run))
+
+            pool = Threadpool(threads_to_run)
+            results = pool.map(ProcessPage.run, start_pages)
+            pool.close()
+            pool.join()
+
+            self.pages = [page for page in results if page is not None]
 
             logging.debug(self.pages)
             self.run_convert(self.post_process)
@@ -418,8 +403,7 @@ class ScanPdf(object):
             end = time.time()
             logging.info("End: " + time.strftime(date_format))
             logging.info("Elapsed Time (seconds): " + str(end - start))
-
-
+            
 
 def main():
     os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
