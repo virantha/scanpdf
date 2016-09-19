@@ -121,9 +121,9 @@ class ProcessPage:
             return True
         c = 'identify -verbose %s' % self.page
         result = self.scanpdf.cmd(c)
-        mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
+        m_std_dev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
         for line in result.splitlines():
-            match = mStdDev.search(line)
+            match = m_std_dev.search(line)
             if match:
                 stdev = float(match.group('percent'))
                 logging.info(os.path.basename(self.page) + " std. dev: " + "{0:.4f}".format(stdev))
@@ -183,6 +183,13 @@ class ProcessPage:
 class ScanPdf(object):
     pages = None
     cwd = None
+    tmp_dir = None
+    args = None
+    pdf_filename = None
+    dpi = None
+    keep_blanks = None
+    blank_threhold = None
+    post_process = None
     """
         The main class.  Performs the following functions:
 
@@ -271,7 +278,8 @@ class ScanPdf(object):
         os.remove(pdf_file)
         shutil.move(ocr_file, pdf_file)
 
-    def file_save(self, source_file):
+    @staticmethod
+    def file_save(source_file):
         f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pdf")
         if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
             return
@@ -335,10 +343,7 @@ class ScanPdf(object):
                 logging.info('saving to file: ' + self.pdf_filename)
             else:
                 logging.info('<pdffile> is \"None\", saving file via dialog...')
-                self.pdf_filename = None
-
         self.dpi = self.args['--dpi']
-
         output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
         if argv['--tmpdir']:
             self.tmp_dir = argv['--tmpdir']
@@ -403,7 +408,7 @@ class ScanPdf(object):
             end = time.time()
             logging.info("End: " + time.strftime(date_format))
             logging.info("Elapsed Time (seconds): " + str(end - start))
-            
+
 
 def main():
     os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
