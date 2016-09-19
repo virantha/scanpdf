@@ -14,8 +14,8 @@ def main():
         os.remove(full_path)
     os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
     args = {'scan': True, 'pdf': True, '<pdffile>': full_path,
-            '--verbose': True, '--debug': True, '--dpi': 300, '--tmpdir':False,
-            '--keep-blanks':False, '--blank-threshold':0.97, '--post-process':False,
+            '--verbose': True, '--debug': True, '--dpi': 300, '--crop': False, '--tmpdir':False,
+            '--keep-blanks':False, '--blank-threshold':0.80, '--post-process':False,
             '--face-up':False, '--keep-tmpdir':False}
     script = scanpdf.ScanPdf()
     print args
