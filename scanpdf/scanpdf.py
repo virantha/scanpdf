@@ -87,7 +87,7 @@ class ProcessPage:
     def run_crop(self):
         logging.info("Cropping: " + os.path.basename(self.page))
         crop_page = '%s.crop' % self.page
-        c = ['convert', '-fuzz 20%', '-trim', self.page, crop_page, ]  # TODO: Check comma status
+        c = ['convert', '-fuzz 20%', '-trim', self.page, crop_page]
         self.scanpdf.cmd(c)
         os.remove(self.page)
         self.page = crop_page
@@ -243,6 +243,9 @@ class ScanPdf(object):
              ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
+        file_count = len([name for name in os.listdir(self.tmp_dir) if
+                          os.path.isfile(os.path.join(self.tmp_dir, name))])
+        logging.info('Receved {0:d} files in {1:}...'.format(file_count, self.tmp_dir))
 
     @staticmethod
     def _error(msg):
@@ -425,7 +428,7 @@ class ScanPdf(object):
 
             end = time.time()
             logging.info("End: " + time.strftime(date_format))
-            logging.info("Elapsed Time (seconds): " + str(end - start))
+            logging.info("Elapsed Time (seconds): {0:.2f}".format(end-start))
 
 
 def main():
