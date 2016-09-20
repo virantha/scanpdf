@@ -37,18 +37,20 @@ Options:
 
 import glob
 import logging
+import multiprocessing
 import os
 import re
 import shutil
 import subprocess
 import sys
-import tkFileDialog
 import time
-import docopt
-import multiprocessing
+import wx
 from multiprocessing.dummy import Pool as Threadpool
 
+import docopt
+
 from version import __version__
+
 date_format = '%m/%d/%Y %H:%M:%S'
 
 
@@ -72,7 +74,6 @@ class ProcessPage:
             self.remove_blank()
         if self.page is not None and self.scanpdf.post_process:
             self.run_postprocess()
-
 
     def run_deskew(self):
         deskew = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'deskew64'
@@ -298,14 +299,19 @@ class ScanPdf(object):
         shutil.move(ocr_file, pdf_file)
 
     @staticmethod
-    def file_save(source_file):
-        f = tkFileDialog.asksaveasfile(mode='w', defaultextension=".pdf")
-        if f is None:  # asksaveasfile return `None` if dialog closed with "cancel".
-            return
-        target_path = f.name
-        f.close()
-        os.remove(target_path)
-        shutil.move(source_file, target_path)
+    def save_file(source_file):
+        path = None
+        _ = wx.App(redirect=True)
+        wildcard = "PDF Files (*.pdf)|*.pdf|" \
+                   "All files (*.*)|*.*"
+
+        dialog = wx.FileDialog(None, "Choose a file", os.path.expanduser("~"), "", wildcard, wx.SAVE)
+        if dialog.ShowModal() == wx.ID_OK:
+            path = dialog.GetPath()
+
+        dialog.Destroy()
+        logging.info("Saving from Dialog: " + path)
+        shutil.move(source_file, path)
 
     def run_convert(self, text_recognize):
         os.chdir(self.tmp_dir)
@@ -334,7 +340,7 @@ class ScanPdf(object):
             shutil.move(pdf_basename, self.pdf_filename)
         else:
             source_file = os.path.join(self.tmp_dir, pdf_basename)
-            self.file_save(source_file)
+            self.save_file(source_file)
         for filename in self.pages + [ps_filename]:
             os.remove(filename)
 
@@ -432,7 +438,6 @@ class ScanPdf(object):
 
 
 def main():
-    os.environ["SCANBD_DEVICE"] = 'net:localhost:fujitsu:ScanSnap S1500:1448'
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__)
     script = ScanPdf()
     print args
