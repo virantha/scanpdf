@@ -17,7 +17,9 @@
 Usage:
     scanpdf [options] scan 
     scanpdf [options] pdf <pdffile> 
-    scanpdf [options] scan pdf <pdffile> 
+    scanpdf [options] scan pdf <pdffile>
+    scanpdf [options] pdf
+    scanpdf [options] scan pdf
 
 
 Options:
@@ -366,11 +368,11 @@ class ScanPdf(object):
         if argv['--debug']:
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')
         if self.args['pdf']:
-            if self.args['<pdffile>'] != 'None':
+            if self.args['<pdffile>']:
                 self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
                 logging.info('saving to file: ' + self.pdf_filename)
             else:
-                logging.info('<pdffile> is \"None\", saving file via dialog...')
+                logging.info('saving file via dialog after processing...')
         self.dpi = self.args['--dpi']
         output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
         if argv['--tmpdir']:
@@ -379,13 +381,12 @@ class ScanPdf(object):
             self.tmp_dir = os.path.join('/tmp', output_dir)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
 
-        if argv['--device']:
-            self.device = argv['--device'].replace('%', ' ')  # Replace % with spaces to comply with docopt
-        else:
-            self.device = os.environ.get('SCANBD_DEVICE')
-
-        # Make the tmp dir only if we're scanning, o/w throw an error
+        # Make the tmp dir only if we're scanning, o/w throw an error, also get device
         if argv['scan']:
+            if argv['--device']:
+                self.device = argv['--device'].replace('%', ' ')  # Replace % with spaces to comply with docopt
+            else:
+                self.device = os.environ.get('SCANBD_DEVICE')
             if os.path.exists(self.tmp_dir):
                 self._error("Temporary output directory %s already exists!" % self.tmp_dir)
             else:
