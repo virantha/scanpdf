@@ -24,6 +24,7 @@ Options:
     -v --verbose                Verbose logging
     -d --debug                  Debug logging
     --dpi=<dpi>                 DPI to scan in [default: 300]
+    --device=<device>           Scanning device (sub '%' for spaces)
     --crop                      Run ImageMagick cropping routine
     --tmpdir=<dir>              Temporary directory 
     --keep-tmpdir               Whether to keep the tmp dir after scanning or not [default: False]
@@ -200,6 +201,7 @@ class ScanPdf(object):
     cwd = None
     tmp_dir = None
     args = None
+    device = None
     pdf_filename = None
     dpi = None
     keep_blanks = None
@@ -231,10 +233,11 @@ class ScanPdf(object):
             self._error("Could not run command %s" % cmd_list)
 
     def run_scan(self):
-        device = os.environ['SCANBD_DEVICE']
+        if self.device is None:
+            self._error("Scanning device is undefined!")
         self.cmd('logger -t "scanbd: " "Begin of scan "')
         c = ['scanadf',
-             '-d "%s"' % device,
+             '-d "%s"' % self.device,
              '--source "ADF Duplex"',
              '--mode Color',
              '--resolution %sdpi' % self.dpi,
@@ -375,6 +378,11 @@ class ScanPdf(object):
         else:
             self.tmp_dir = os.path.join('/tmp', output_dir)
         self.tmp_dir = os.path.abspath(self.tmp_dir)
+
+        if argv['--device']:
+            self.device = argv['--device'].replace('%', ' ')  # Replace % with spaces to comply with docopt
+        else:
+            self.device = os.environ.get('SCANBD_DEVICE')
 
         # Make the tmp dir only if we're scanning, o/w throw an error
         if argv['scan']:
