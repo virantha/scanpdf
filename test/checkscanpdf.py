@@ -5,11 +5,18 @@
 import os
 from scanpdf import scanpdf
 
-OUTPUT_DIRECTORY = "/home/dale/Temp"
+OUTPUT_DIRECTORY = "~/Temp"
 FILENAME = "image_test.pdf"
 
 
+def ensure_dir(f):
+    d = os.path.dirname(f)
+    if not os.path.exists(d):
+        os.makedirs(d)
+
+
 def main():
+    ensure_dir(OUTPUT_DIRECTORY)
     full_path = os.path.join(OUTPUT_DIRECTORY, FILENAME)
     if os.path.exists(full_path):
         os.remove(full_path)

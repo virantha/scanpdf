@@ -58,6 +58,11 @@ date_format = '%m/%d/%Y %H:%M:%S'
 
 
 class ProcessPage:
+    """Process page applies methods to a single PPM Image
+    Attributes:
+        page (str): Filename of image
+        scanpdf (ScanPdf): ScanPDF object which instantiated the ProcessPage
+    """
     page = None
     scanpdf = None
 
@@ -69,6 +74,10 @@ class ProcessPage:
         os.chdir(self.scanpdf.tmp_dir)
 
     def process(self):
+        """
+        Apply all processing in accordance with selcted options
+        :return: None
+        """
         self.run_deskew()
         if self.scanpdf.crop:
             self.run_crop()
@@ -79,6 +88,11 @@ class ProcessPage:
             self.run_postprocess()
 
     def run_deskew(self):
+        """
+        Deskew image using Marke Mauder Deskew
+        https://bitbucket.org/galfar/app-deskew
+        :return: None
+        """
         deskew = os.path.dirname(os.path.realpath(__file__)) + os.path.sep + 'deskew64'
         logging.info("Deskewing: " + os.path.basename(self.page))
         ppm_page = '%s.ppm' % self.page
@@ -89,6 +103,10 @@ class ProcessPage:
         self.page = ppm_page
 
     def run_crop(self):
+        """
+        Apply standard cropping routine from ImageMagick
+        :return:
+        """
         logging.info("Cropping: " + os.path.basename(self.page))
         crop_page = '%s.crop' % self.page
         c = ['convert', '-fuzz 20%', '-trim', self.page, crop_page]
@@ -107,11 +125,19 @@ class ProcessPage:
         self.page = processed_page
 
     def convert_to_bw(self):
+        """
+        Check if color exists, convert to black-white if not
+        :return: None
+        """
         logging.info("Checking if: " + os.path.basename(self.page) + " is bw...")
         if not self._is_color():
             self._page_to_bw()
 
     def _page_to_bw(self):
+        """
+        Apply ImageMagick Black-White Conversion
+        :return: None
+        """
         bw_page = "%s_bw" % self.page
         c = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (self.page, self.page)
         self.scanpdf.cmd(c)
@@ -121,11 +147,20 @@ class ProcessPage:
 
     @staticmethod
     def run(args):
+        """
+        Static run method for ProcessPage
+        :param args: page (string pagename), ScanPdf tuple
+        :return: name of final processed page
+        """
         process_page = ProcessPage(args[0], args[1])
         process_page.process()
         return process_page.page
 
     def remove_blank(self):
+        """
+        Check if page is blank: if so, remove
+        :return: None
+        """
         logging.info("Checking if: " + os.path.basename(self.page) + " is blank")
         if self.is_blank():
             os.remove(self.page)
@@ -133,6 +168,8 @@ class ProcessPage:
 
     def is_blank(self):
         """
+        Check if page blank by comparing stdev from ImageMagick 'Identify'
+        to threshold (1 - blank_threshold)
         :return: true if image is blank
         """
         if not os.path.exists(self.page):
@@ -164,6 +201,7 @@ class ProcessPage:
         442906: (254,254,254,255) #FEFEFE srgba(254,254,254,1)
         1053: (  0,  0,  0,255) #000000 black
         484081: (255,255,255,255) #FFFFFF white
+        :return: true if image color exists
         """
         c = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % self.page
         out = self.scanpdf.cmd(c)
@@ -199,6 +237,21 @@ class ProcessPage:
 
 
 class ScanPdf(object):
+    """
+    Controls Scan and PDF functions
+    Attributes:
+        pages (list): list of page filenames
+        cwd (str): Current Working Directory
+        tmp_dir(str): name of temporary directory for original and processed images
+        args (dict): command line arguments received from docopt
+        device (str): scanning device name recongized by scanadf
+        pdf_filename (str): path/name for pdf output
+        dpi (int): resolution for scanned image (dots per inch)
+        keep_blanks (bool): Whether to keep blank images
+        crop (bool): Whether to crop images
+        post-process (bool): Whether to apply unpaper post-processing
+        text_recognize (bool): Whether to apply pdf-sandwich post processing
+    """
     pages = None
     cwd = None
     tmp_dir = None
@@ -211,10 +264,6 @@ class ScanPdf(object):
     crop = None
     post_process = None
     text_recognize = None
-    """
-        The main class.  Performs the following functions:
-
-    """
 
     def __init__(self):
         """ 
@@ -223,6 +272,11 @@ class ScanPdf(object):
         self.cwd = os.getcwd()
 
     def cmd(self, cmd_list):
+        """
+        Run command in operating system
+        :param cmd_list: list of commands
+        :return: os outpout of command
+        """
         if isinstance(cmd_list, list):
             cmd_list = ' '.join(cmd_list)
         logging.debug("Running cmd: %s" % cmd_list)
@@ -235,6 +289,10 @@ class ScanPdf(object):
             self._error("Could not run command %s" % cmd_list)
 
     def run_scan(self):
+        """
+        Scan documents from device
+        :return: None
+        """
         if self.device is None:
             self._error("Scanning device is undefined!")
         self.cmd('logger -t "scanbd: " "Begin of scan "')
@@ -255,6 +313,11 @@ class ScanPdf(object):
 
     @staticmethod
     def _error(msg):
+        """
+        print error and exit
+        :param msg: error message
+        :return: None
+        """
         print("ERROR: %s" % msg)
         sys.exit(-1)
 
@@ -296,6 +359,11 @@ class ScanPdf(object):
         #     return False
 
     def run_text_recognize(self, pdf_file):
+        """
+        run text recognition
+        :param pdf_file: pdf filename (in temporary directory)
+        :return:
+        """
         c = ['pdfsandwich', '-coo', '\"-deskew 40%\"', pdf_file]
         self.cmd(c)
         filename, file_extension = os.path.splitext(pdf_file)
@@ -305,6 +373,11 @@ class ScanPdf(object):
 
     @staticmethod
     def save_file(source_file):
+        """
+        Run dialog to save file to user-defined name/folder
+        :param source_file: pdf file in temporary directory
+        :return: None
+        """
         path = None
         _ = wx.App(redirect=True)
         wildcard = "PDF Files (*.pdf)|*.pdf|" \
@@ -319,6 +392,12 @@ class ScanPdf(object):
         shutil.move(source_file, path)
 
     def run_convert(self, text_recognize):
+        """
+        convert images to pdf file, run text recongnition (if desired),
+        save to directory (pre-defined or user-defined)
+        :param text_recognize: boolean on whether to apply text recognition
+        :return: None
+        """
         os.chdir(self.tmp_dir)
         if self.pdf_filename is not None:
             pdf_basename = os.path.basename(self.pdf_filename)
