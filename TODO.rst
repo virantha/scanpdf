@@ -2,5 +2,5 @@ Todo list
 =========
 
 - Make it more generic in terms of stand-alone usage
-- Add docstrings
+- Consider changing default blank-threshold value
 

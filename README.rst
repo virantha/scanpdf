@@ -27,7 +27,9 @@ Features
 * `Integrates with ScanBd <http://virantha.github.io/scanpdf/html>`_ to respond to hardware button presses
 * Automatically removes blank pages.
 * Scans in color, and automatically down-converts into 1-bit B/W image for text/greyscale images
-* Auto-crops to the proper page size.
+* (optionally) Auto-crops to the proper page size.
+* (optionally) applyies unpaper formatting to finished images
+* (optionally) applies pdf-sandwich text-recognition to finished pdf
 
 Usage:
 ------
@@ -36,6 +38,10 @@ The simplest way to use this is:
 ::
 
     scanpdf scan pdf <pdffile>
+
+    Or alternatively
+
+    scanpdf scan pdf (To bring up a file-save dialog to direct the finished pdf file.)
 
 This will first perform the scan, and then the conversion to PDF.  If you want
 to split up the scan and the PDF conversion into two separate invocations (for
@@ -64,15 +70,19 @@ additional post-processing using unpaper_:
 ::
 
         --dpi=<dpi>                 DPI to scan in [default: 300]
+        --device=<device>           Scanning device (sub '%' for spaces)
+        --crop                      Run ImageMagick cropping routine
+        --tmpdir=<dir>              Temporary directory
+        --keep-tmpdir               Whether to keep the tmp dir after scanning or not [default: False]
         --face-up=<true/false>      Face-up scanning [default: True]
         --keep-blanks               Don't check for and remove blank pages
-        --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
-        --post-process              Run unpaper to deskew/clean up
+        --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97]
+        --post-process              Process finished images with unpaper
+        --text-recognize            Run pdfsandwich for text recognition
 
-
-Right now, I'm assuming this is getting called via ScanBD, so I don't have the option to manually specify the 
-scanner.  If you really want to use this standalone, for now, please just set the ``SCANBD_DEVICE`` environment 
-variable to your scanner device name before running this script.
+Right now, I'm assuming this is getting called via ScanBD, so I don't have the option to manually specify the
+scanner.  If you really want to use this standalone, for now, either set the --device option or just set the
+         ``SCANBD_DEVICE`` environment variable to your scanner device name before running this script.
 
 
 Installation
@@ -87,6 +97,8 @@ Requires ImageMagick and SANE to be installed, for the command line tools:
 * ``identify``
 * ``ps2pdf``
 * ``scanadf``
+* ``unpaper``
+* ``pdfsandwich``
 
 Also requires epstopdf.
 
