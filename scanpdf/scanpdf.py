@@ -75,12 +75,13 @@ class ScanPdf(object):
     def run_scan(self):
         device = os.environ['SCANBD_DEVICE']
         self.cmd('logger -t "scanbd: " "Begin of scan "')
-        c = ['scanadf',
+        c = ['SANE_CONFIG_DIR=/etc/scanbd', 
+                'scanadf',
                 '-d "%s"' % device,
                 '--source "ADF Duplex"',
                 '--mode Color',
                 '--resolution %sdpi' % self.dpi,
-                '--y-resolution %sdpi' % self.dpi,
+                #'--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
                 '-y 876',
                 '--page-height 376',
@@ -134,7 +135,7 @@ class ScanPdf(object):
         result = self.cmd(c)
         mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
         for line in result.splitlines():
-            match = mStdDev.search(line)
+            match = mStdDev.search(str(line))
             if match:
                 stdev = float(match.group('percent'))
                 if stdev > 0.1:
@@ -197,11 +198,11 @@ class ScanPdf(object):
                 ps_filename
             ]
         self.cmd(c)
-        c = ['ps2pdf',
-                '-DPDFSETTINGS=/prepress',
-                ps_filename,
-                pdf_basename,
-            ]
+        #c = ['ps2pdf',
+                #'-DPDFSETTINGS=/prepress',
+                #ps_filename,
+                #pdf_basename,
+            #]
         c = ['epstopdf',
                 ps_filename,
                 ]
@@ -270,7 +271,7 @@ class ScanPdf(object):
         mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+).+""")
         colors = []
         for line in out.splitlines():
-            matchLine = mLine.search(line)
+            matchLine = mLine.search(str(line))
             if matchLine:
                 logging.debug("Found RGB values")
                 color = [int(x) for x in (matchLine.group('count'),
