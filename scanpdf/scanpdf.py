@@ -67,7 +67,7 @@ class ScanPdf(object):
             logging.debug(out)
             return out
         except subprocess.CalledProcessError as e:
-            print e.output
+            print (e.output)
             self._error("Could not run command %s" % cmd_list)
             
 
@@ -398,7 +398,7 @@ class ScanPdf(object):
 def main():
     args = docopt.docopt(__doc__, version='Scan PDF %s' % __version__ )
     script = ScanPdf()
-    print args
+    print(args)
     script.go(args)
 
 if __name__ == '__main__':
