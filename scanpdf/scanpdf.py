@@ -57,6 +57,7 @@ class ScanPdf(object):
         """ 
         """
         self.config = None
+        self.bw_pages = {}  # Keep track of which pages were in B&W
 
     def cmd(self, cmd_list):
         if isinstance(cmd_list, list):
@@ -83,8 +84,12 @@ class ScanPdf(object):
                 '--resolution %sdpi' % self.dpi,
                 #'--y-resolution %sdpi' % self.dpi,
                 '-o %s/page_%%04d' % self.tmp_dir,
-                '-y 876',
-                '--page-height 376',
+                #'-y 876.695mm',
+                #'--page-height 355.617mm',
+                '--page-height 876.695',
+                '-y 876.695',
+                #'--buffermode On',
+                '--ald yes',
                 ]
         self.cmd(c)
         self.cmd('logger -t "scanbd: " "End of scan "')
@@ -155,12 +160,14 @@ class ScanPdf(object):
         os.chdir(self.tmp_dir)
         
         processed_pages = []
+        self.bw_pages = {}
         for page in page_files:
             processed_page = '%s_unpaper' % page
             c = ['unpaper', page, processed_page]
             self.cmd(c) 
             os.remove(page)
             processed_pages.append(processed_page)
+            self.bw_pages[processed_page] = True
         os.chdir(cwd)
         return processed_pages
 
@@ -179,7 +186,8 @@ class ScanPdf(object):
                     crop_page,
                 ]
             self.cmd(c)
-            os.remove(page)
+            if not self.args['--keep-tmpdir']:
+                os.remove(page)
 
         os.chdir(cwd)
         return crop_pages
@@ -191,26 +199,40 @@ class ScanPdf(object):
         pdf_basename = os.path.basename(self.pdf_filename)
         ps_filename = pdf_basename
         ps_filename = ps_filename.replace(".pdf", ".ps")
+
+
         c = ['convert',
                 '-density %s' % self.dpi,
+                '+page', # Make sure it doesn't crop to letter size
+                '-compress JPEG',
+                '-sampling-factor 4:2:0',
+                '-strip',
+                '-quality 85',
+                '-interlace JPEG',
+                '-colorspace RGB',
                 '-rotate 180',
                 ' '.join(page_files),
-                ps_filename
+                '%s' % pdf_basename,
             ]
         self.cmd(c)
+
+
         #c = ['ps2pdf',
                 #'-DPDFSETTINGS=/prepress',
                 #ps_filename,
                 #pdf_basename,
             #]
-        c = ['epstopdf',
-                ps_filename,
-                ]
+
+        # unneeded since we're going directly to pdf using imagemagick now
+        #c = ['epstopdf',
+                #ps_filename,
+                #]
         
-        self.cmd(c)
+        #self.cmd(c)
         shutil.move(pdf_basename, self.pdf_filename)
-        for filename in page_files+[ps_filename]:
-            os.remove(filename)
+        if not self.args['--keep-tmpdir']:
+            for filename in page_files+[ps_filename]:
+                os.remove(filename)
            
         # IF we did the scan, then remove the tmp dir too
         if self.args['scan'] and not self.args['--keep-tmpdir']:
@@ -225,9 +247,13 @@ class ScanPdf(object):
             logging.info("Checking if %s is bw..." % filename)
             if self._is_color(filename):
                 new_pages.append(page)
+                logging.info("No, %s is color..." % filename)
+                self.bw_pages[page] = False
             else: # COnvert to BW
                 bw_page = self._page_to_bw(filename)
+                logging.info("Yes, %s converted to bw..." % filename)
                 new_pages.append(bw_page)
+                self.bw_pages[bw_page] = True
         return new_pages
 
             
@@ -239,7 +265,8 @@ class ScanPdf(object):
         cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (page, page)
         out = self.cmd(cmd)
         # Remove the old file
-        os.remove(page)
+        if not self.args['--keep-tmpdir']:
+            os.remove(page)
         os.chdir(cwd)
         return out_page
 
