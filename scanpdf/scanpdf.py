@@ -201,20 +201,54 @@ class ScanPdf(object):
         ps_filename = ps_filename.replace(".pdf", ".ps")
 
 
-        c = ['convert',
-                '-density %s' % self.dpi,
-                '+page', # Make sure it doesn't crop to letter size
-                '-compress JPEG',
-                '-sampling-factor 4:2:0',
-                '-strip',
-                '-quality 85',
-                '-interlace JPEG',
-                '-colorspace RGB',
-                '-rotate 180',
-                ' '.join(page_files),
-                '%s' % pdf_basename,
-            ]
+        # Convert each page to a ps
+        for page in page_files:
+            c = ['convert',
+                    '-density %s' % self.dpi,
+                    '+page', # Make sure it doesn't crop to letter size
+                    '-compress JPEG',
+                    '-sampling-factor 4:2:0',
+                    '-strip',
+                    '-quality 85',
+                    '-interlace JPEG',
+                    '-colorspace RGB',
+                    '-rotate 180',
+                    page,
+                    '%s.pdf' % page,
+                ]
+            self.cmd(c)
+
+        # Create a single ps file using gs
+        c = ['gs', 
+                '-sDEVICE=pdfwrite',
+                '-r%s' % self.dpi,
+                '-dNOPAUSE',
+                '-dBATCH',
+                '-dSAFER',
+                '-sOutputFile=%s' % pdf_basename,
+                ' '.join(['%s.pdf' % p for p in page_files]),
+                ]
         self.cmd(c)
+        c = ['epstopdf',
+                ps_filename,
+                ]
+        
+        #self.cmd(c)
+
+        #c = ['convert',
+                #'-density %s' % self.dpi,
+                #'+page', # Make sure it doesn't crop to letter size
+                #'-compress JPEG',
+                #'-sampling-factor 4:2:0',
+                #'-strip',
+                #'-quality 85',
+                #'-interlace JPEG',
+                #'-colorspace RGB',
+                #'-rotate 180',
+                #' '.join(page_files),
+                #'%s' % pdf_basename,
+            #]
+        #self.cmd(c)
 
 
         #c = ['ps2pdf',
