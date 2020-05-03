@@ -203,19 +203,33 @@ class ScanPdf(object):
 
         # Convert each page to a ps
         for page in page_files:
-            c = ['convert',
-                    '-density %s' % self.dpi,
-                    '+page', # Make sure it doesn't crop to letter size
-                    '-compress JPEG',
-                    '-sampling-factor 4:2:0',
-                    '-strip',
-                    '-quality 85',
-                    '-interlace JPEG',
-                    '-colorspace RGB',
-                    '-rotate 180',
-                    page,
-                    '%s.pdf' % page,
-                ]
+            is_bw = self.bw_pages.get(page, False)
+            if is_bw:
+                c = ['convert',
+                        page,
+                        '-density %s' % self.dpi,
+                        '-depth 2', 
+                        '-define png:compression-level=9',
+                        '-define png:format=8',
+                        '-define png:color-type=0',
+                        '-define png:bit-depth=2',
+                        'PNG:- | convert - -rotate 180',
+                        '%s.pdf' % page,
+                        ]
+            else:
+                c = ['convert',
+                        '-density %s' % self.dpi,
+                        '+page', # Make sure it doesn't crop to letter size
+                        '-compress JPEG',
+                        '-sampling-factor 4:2:0',
+                        '-strip',
+                        '-quality 85',
+                        '-interlace JPEG',
+                        '-colorspace RGB',
+                        '-rotate 180',
+                        page,
+                        '%s.pdf' % page,
+                    ]
             self.cmd(c)
 
         # Create a single ps file using gs
@@ -296,7 +310,7 @@ class ScanPdf(object):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
 
-        cmd = "convert %s +dither -colors 2 -colorspace gray -normalize %s_bw" % (page, page)
+        cmd = "convert %s +dither -density %s -deskew 80%% -colors 16 -colors 4 -colorspace gray -normalize %s_bw" % (page, self.dpi, page)
         out = self.cmd(cmd)
         # Remove the old file
         if not self.args['--keep-tmpdir']:
