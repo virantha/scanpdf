@@ -126,6 +126,25 @@ class ScanPdf(object):
         pages.reverse()
         return pages
             
+    def parse_dimensions(self, result):
+        first_line = str(result.splitlines()[0].strip())
+        logging.debug(first_line)
+        mCropDim = re.compile("""\s*(?P<filename>[\d\w\[_\/\\\.]+)\s+\w+\s+(?P<X>\d+)x(?P<Y>\d+)\s+""")
+        # blank3.pnm PPM 1x1 1950x2716-1-1 8-bit sRGB 0.010u 0:00.009
+        matchCropDim = mCropDim.search(first_line)
+        if matchCropDim:
+            x = int(matchCropDim.group('X'))
+            y = int(matchCropDim.group('Y'))
+        else:
+            x = -1
+            y = -1
+        return x, y
+
+    def get_dimensions(self, filename):
+        c = 'identify %s' % filename
+        result = self.cmd(c)
+        return self.parse_dimensions(result)
+
     def is_blank(self, filename):
         """
             Returns true if image in filename is blank
@@ -135,7 +154,22 @@ class ScanPdf(object):
         if not os.path.exists(filename):
             return True
 
-
+        c = 'convert %s -shave %sx%s -virtual-pixel White -blur 0x15 -fuzz 15%% -trim info:' % (filename, self.dpi, self.dpi)
+        result = self.cmd(c)
+        x, y = self.parse_dimensions(result)
+        if x>0 and y>0:
+            logging.debug('Finding threshold for blanks')
+            threshold = int(self.dpi)*0.3  # Threshold is 0.3 inches
+            logging.debug('x=%s, y=%s, threshold=%s' % (x, y, threshold))
+            if x < threshold or y < threshold:
+                return True
+            else:
+                return False
+        else:
+            logging.debug('Could not find dimensions in output of imagemagick for cropping')
+            return False
+        
+        # Old code, doesn't really work for pages with small amounts of text
         c = 'identify -verbose %s' % filename
         result = self.cmd(c)
         mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
@@ -147,13 +181,6 @@ class ScanPdf(object):
                     return False
         return True
 
-        # OLD CODE - doesn't work for color images
-        c = 'convert %s -shave 1%%x1%%  -format "%%[fx:mean]" info:' % filename
-        result = self.cmd(c)
-        if float(result.strip()) > self.blank_threshold:
-            return True
-        else:
-            return False
 
     def run_postprocess(self, page_files):
         cwd = os.getcwd()
@@ -178,14 +205,35 @@ class ScanPdf(object):
         for i, page in enumerate(page_files):
             logging.debug("Cropping page %d" % i)
             crop_page = '%s.crop' % page
-            crop_pages.append(crop_page)
+            shave_amt = int(int(self.dpi)*0.1)
             c = ['convert',
+                    '-shave %dx%d' % (shave_amt, shave_amt),
                     '-fuzz 20%',
                     '-trim',
+                    '+repage',
                     ' %s ' % page,
                     crop_page,
                 ]
             self.cmd(c)
+            # Get original dimensions
+            x, y = self.get_dimensions(page)
+            if x>0 and y>0:
+                pad_page = '%s.crop.pad' % page
+                c = ['convert',
+                        '-gravity center',
+                        '-extent %sx%s' % (x, y),
+                        '-background white',
+                        crop_page,
+                        pad_page ,
+                        ]
+                self.cmd(c)
+                crop_pages.append(pad_page)
+
+                if not self.args['--keep-tmpdir']:
+                    os.remove(crop_page)
+            else:
+                crop_pages.append(crop_page)
+                
             if not self.args['--keep-tmpdir']:
                 os.remove(page)
 
@@ -368,9 +416,11 @@ class ScanPdf(object):
                          abs(color[3]-color[1]),
                          abs(color[3]-color[2]),
                          ]))/3
-            if diff > 20:
+            if diff > 30:
                 is_color = True
-                logging.debug("Found color")
+                logging.debug("Found color, diff is %s" % diff)
+            else:
+                logging.debug("No color, diff is %s" % diff)
         return is_color
 
 
