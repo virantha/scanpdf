@@ -121,8 +121,6 @@ class ScanPdf(object):
         reorder = []
         assert len(pages) % 2 == 0, "Why is page count not even for duplexing??"
         logging.info("Reordering pages")
-        #for i in range(0,len(pages),2):
-            #pages[i], pages[i+1] = pages[i+1], pages[i]
         pages.reverse()
         return pages
             
@@ -149,17 +147,20 @@ class ScanPdf(object):
         """
             Returns true if image in filename is blank
 
-	     standard deviation: 56.9662 (0.223397)
+            - Shave off one inch around edges
+            - Blur and crop down as much as possible
+            - If remaining page has a dimension smaller than 0.3" conclude it's blank
         """
         if not os.path.exists(filename):
             return True
 
-        c = 'convert %s -shave %sx%s -virtual-pixel White -blur 0x15 -fuzz 15%% -trim info:' % (filename, self.dpi, self.dpi)
+        #c = 'convert %s -shave %sx%s -virtual-pixel White -blur 0x15 -fuzz 15%% -trim info:' % (filename, self.dpi, self.dpi)
+        c = 'convert %s -shave %sx%s -density %s -adaptive-resize 40%% -virtual-pixel White -blur 0x15 -fuzz 20%% -trim info:' % (filename, self.dpi, self.dpi, int(self.dpi/2))
         result = self.cmd(c)
         x, y = self.parse_dimensions(result)
         if x>0 and y>0:
             logging.debug('Finding threshold for blanks')
-            threshold = int(self.dpi)*0.3  # Threshold is 0.3 inches
+            threshold = int(self.dpi)/2*0.3  # Threshold is 0.3 inches
             logging.debug('x=%s, y=%s, threshold=%s' % (x, y, threshold))
             if x < threshold or y < threshold:
                 return True
@@ -170,16 +171,16 @@ class ScanPdf(object):
             return False
         
         # Old code, doesn't really work for pages with small amounts of text
-        c = 'identify -verbose %s' % filename
-        result = self.cmd(c)
-        mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
-        for line in result.splitlines():
-            match = mStdDev.search(str(line))
-            if match:
-                stdev = float(match.group('percent'))
-                if stdev > 0.1:
-                    return False
-        return True
+        # c = 'identify -verbose %s' % filename
+        # result = self.cmd(c)
+        # mStdDev = re.compile("""\s*standard deviation:\s*\d+\.\d+\s*\((?P<percent>\d+\.\d+)\).*""")
+        # for line in result.splitlines():
+        #     match = mStdDev.search(str(line))
+        #     if match:
+        #         stdev = float(match.group('percent'))
+        #         if stdev > 0.1:
+        #             return False
+        # return True
 
 
     def run_postprocess(self, page_files):
@@ -207,33 +208,27 @@ class ScanPdf(object):
             crop_page = '%s.crop' % page
             shave_amt = int(int(self.dpi)*0.1)
             c = ['convert',
+                    '-deskew 80%',
                     '-shave %dx%d' % (shave_amt, shave_amt),
                     '-fuzz 20%',
                     '-trim',
                     '+repage',
-                    ' %s ' % page,
-                    crop_page,
                 ]
-            self.cmd(c)
+            
             # Get original dimensions
             x, y = self.get_dimensions(page)
             if x>0 and y>0:
-                pad_page = '%s.crop.pad' % page
-                c = ['convert',
-                        '-gravity center',
-                        '-extent %sx%s' % (x, y),
-                        '-background white',
-                        crop_page,
-                        pad_page ,
-                        ]
-                self.cmd(c)
-                crop_pages.append(pad_page)
+                # IF we know the original dimensions, then just pad back to that with white background
+                c.extend([  '-gravity center',
+                            '-extent %sx%s' % (x, y),
+                            '-background white',
+                ])
+            c.extend([ ' %s ' % page,
+                       crop_page,
+                    ])
+            self.cmd(c)
+            crop_pages.append(crop_page)
 
-                if not self.args['--keep-tmpdir']:
-                    os.remove(crop_page)
-            else:
-                crop_pages.append(crop_page)
-                
             if not self.args['--keep-tmpdir']:
                 os.remove(page)
 
@@ -358,7 +353,7 @@ class ScanPdf(object):
         cwd = os.getcwd()
         os.chdir(self.tmp_dir)
 
-        cmd = "convert %s +dither -density %s -deskew 80%% -colors 16 -colors 4 -colorspace gray -normalize %s_bw" % (page, self.dpi, page)
+        cmd = "convert %s +dither -density %s -colors 16 -colors 4 -colorspace gray -normalize %s_bw" % (page, self.dpi, page)
         out = self.cmd(cmd)
         # Remove the old file
         if not self.args['--keep-tmpdir']:
@@ -389,7 +384,7 @@ class ScanPdf(object):
                 484081: (255,255,255,255) #FFFFFF white
  
         """
-        cmd = "convert %s -colors 8 -depth 8 -format %%c histogram:info:-" % filename
+        cmd = "convert %s -density %s -adaptive-resize 35%% -colors 8 -depth 8 -format %%c histogram:info:-" % (filename, int(self.dpi/3))
         out = self.cmd(cmd)
         mLine = re.compile(r"""\s*(?P<count>\d+):\s*\(\s*(?P<R>\d+),\s*(?P<G>\d+),\s*(?P<B>\d+).+""")
         colors = []
@@ -446,7 +441,7 @@ class ScanPdf(object):
         if self.args['pdf']:
             self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
 
-        self.dpi = self.args['--dpi']
+        self.dpi = int(self.args['--dpi'])
 
         output_dir = time.strftime('%Y%m%d_%H%M%S', time.localtime())
         if argv['--tmpdir']:
