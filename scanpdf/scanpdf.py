@@ -89,6 +89,8 @@ class ScanPdf(object):
                 '--page-height 876.695',
                 '-y 876.695',
                 #'--buffermode On',
+                '--brightness=25',
+                '--emphasis=20',
                 '--ald yes',
                 ]
         self.cmd(c)
