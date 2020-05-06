@@ -157,7 +157,7 @@ class ScanPdf(object):
             return True
 
         #c = 'convert %s -shave %sx%s -virtual-pixel White -blur 0x15 -fuzz 15%% -trim info:' % (filename, self.dpi, self.dpi)
-        c = 'convert %s -shave %sx%s -density %s -adaptive-resize 40%% -virtual-pixel White -blur 0x15 -fuzz 20%% -trim info:' % (filename, self.dpi, self.dpi, int(self.dpi/2))
+        c = 'convert %s -shave %sx%s -density %s -adaptive-resize 65%% -virtual-pixel White -blur 0x15 -fuzz 15%% -trim info:' % (filename, self.dpi, self.dpi, int(self.dpi/2))
         result = self.cmd(c)
         x, y = self.parse_dimensions(result)
         if x>0 and y>0:
