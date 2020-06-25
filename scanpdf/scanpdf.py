@@ -324,7 +324,7 @@ class ScanPdf(object):
         #self.cmd(c)
         shutil.move(pdf_basename, self.pdf_filename)
         if not self.args['--keep-tmpdir']:
-            for filename in page_files+[ps_filename]:
+            for filename in page_files:
                 os.remove(filename)
            
         # IF we did the scan, then remove the tmp dir too
