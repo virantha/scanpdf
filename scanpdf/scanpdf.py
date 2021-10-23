@@ -30,7 +30,8 @@ Options:
     --keep-blanks               Don't check for and remove blank pages
     --blank-threshold=<ths>     Percentage of white to be marked as blank [default: 0.97] 
     --post-process              Run unpaper to deskew/clean up
-    
+    --device=<scandevice>       Set the device [default: the SCANBD_DEVICE environment variable]
+    --sanedir=<sanedir>         Set the SANE configuration directory [default: /etc/scanbd]
 """
 
 import sys, os
@@ -38,7 +39,7 @@ import logging
 import shutil
 import re
 
-from version import __version__
+from .version import __version__
 import docopt
 
 import subprocess
@@ -74,9 +75,9 @@ class ScanPdf(object):
 
 
     def run_scan(self):
-        device = os.environ['SCANBD_DEVICE']
+        device = os.environ['SCANBD_DEVICE'] if self.scandevice is None else self.scandevice
         self.cmd('logger -t "scanbd: " "Begin of scan "')
-        c = ['SANE_CONFIG_DIR=/etc/scanbd', 
+        c = ['SANE_CONFIG_DIR="%s"' % self.sanedir, 
                 'scanadf',
                 '-d "%s"' % device,
                 '--source "ADF Duplex"',
@@ -442,6 +443,16 @@ class ScanPdf(object):
             logging.basicConfig(level=logging.DEBUG, format='%(message)s')                
         if self.args['pdf']:
             self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
+
+        if argv["--sanedir"]:
+            self.sanedir = argv["sanedir"]
+        else:
+            self.sanedir = "/etc/scanbd"
+
+        if argv["--device"]
+            self.scandevice = argv["scandevice"]
+        else:
+            self.scandevice = None
 
         self.dpi = int(self.args['--dpi'])
 
