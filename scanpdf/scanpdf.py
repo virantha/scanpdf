@@ -445,12 +445,12 @@ class ScanPdf(object):
             self.pdf_filename = os.path.abspath(self.args['<pdffile>'])
 
         if argv["--sanedir"]:
-            self.sanedir = argv["sanedir"]
+            self.sanedir = argv["--sanedir"]
         else:
             self.sanedir = "/etc/scanbd"
 
         if argv["--device"]:
-            self.scandevice = argv["scandevice"]
+            self.scandevice = argv["--device"]
         else:
             self.scandevice = None
 
