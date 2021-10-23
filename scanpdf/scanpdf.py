@@ -449,7 +449,7 @@ class ScanPdf(object):
         else:
             self.sanedir = "/etc/scanbd"
 
-        if argv["--device"] && argv["--device"] != "the SCANBD_DEVICE environment variable":
+        if argv["--device"] and argv["--device"] != "the SCANBD_DEVICE environment variable":
             self.scandevice = argv["--device"]
         else:
             self.scandevice = None
