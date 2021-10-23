@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: scanpdf
-Version: 0.3.0
+Version: 0.3.1
 Summary: Utility to use SANE/scanadf to scan to PDF
 Home-page: UNKNOWN
 Author: Virantha N. Ekanayake
@@ -35,6 +35,7 @@ Description: Scan PDF - Easy scans in Linux with a document scanner like the Fuj
         * `Integrates with ScanBd <http://virantha.github.io/scanpdf/html>`_ to respond to hardware button presses
         * Automatically removes blank pages.
         * Scans in color, and automatically down-converts into 1-bit B/W image for text/greyscale images
+        * Auto-crops to the proper page size.
         
         Usage:
         ------
