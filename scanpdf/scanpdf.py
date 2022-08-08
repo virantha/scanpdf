@@ -38,7 +38,7 @@ import logging
 import shutil
 import re
 
-from version import __version__
+from scanpdf.version import __version__
 import docopt
 
 import subprocess
@@ -68,7 +68,7 @@ class ScanPdf(object):
             logging.debug(out)
             return out
         except subprocess.CalledProcessError as e:
-            print (e.output)
+            print(e.output)
             self._error("Could not run command %s" % cmd_list)
             
 
