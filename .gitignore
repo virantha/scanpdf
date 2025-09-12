@@ -1,3 +1,2 @@
-*.pyc
-.*
-*~
+# created by virtualenv automatically
+*
